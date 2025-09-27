@@ -3,566 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Інтерактивний чек-лист: Майстер зміни</title>
+    <title>Портал для Майстра зміни</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 
-    Application Structure Plan: Based on the provided example, this is a single-page application (SPA) 
-    with three primary views: "Start of Shift", "End of Shift", and "Contacts". Navigation buttons toggle visibility 
-    between these sections. The checklist sections contain interactive items. Key features include an employee selection 
-    dropdown, a dynamic progress bar, and a reset button. The contacts section provides a list with call buttons.
-    A dedicated contacts icon-button is placed in the header for better UI separation.
-    -->
     <style>
         body {
+            background-color: #f8fafc; /* slate-50 */
             -webkit-tap-highlight-color: transparent;
-            padding-bottom: 6rem; /* Space for fixed footer */
         }
-        .checklist-item {
-            transition: background-color 0.3s ease, color 0.3s ease;
+        .link-card {
+            background-color: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+            text-decoration: none;
+            color: #1e293b; /* slate-800 */
         }
-        .checklist-item.completed {
-            background-color: #e2e8f0; /* slate-200 */
+        .link-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .link-card svg {
+            width: 3.5rem; /* 56px */
+            height: 3.5rem; /* 56px */
+            margin-bottom: 1rem;
+            color: #059669; /* emerald-600 */
+        }
+        .link-card h2 {
+            font-size: 1.25rem; /* 20px */
+            font-weight: 700;
+        }
+         .link-card p {
+            font-size: 0.875rem; /* 14px */
             color: #64748b; /* slate-500 */
-        }
-        .checklist-item.completed .task-text {
-            text-decoration: line-through;
-        }
-        .checklist-item.completed .checkbox-icon::after {
-            content: '✔';
-            color: #10b981; /* emerald-500 */
-        }
-        .nav-button.active {
-            background-color: #059669; /* emerald-600 */
-            color: white;
-            border-color: #059669; /* emerald-600 */
-        }
-        .progress-bar-fill {
-            transition: width 0.5s ease-in-out;
-        }
-        .modal-overlay {
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-        }
-        .modal-content {
-            z-index: 1001;
-        }
-        .disabled-checklist-item {
-            pointer-events: none;
-            opacity: 0.5;
-            cursor: not-allowed;
+            margin-top: 0.5rem;
         }
     </style>
 </head>
-<body class="bg-slate-50 font-sans">
+<body class="font-sans">
 
-    <div class="container mx-auto max-w-3xl p-4 sm:p-6 lg:p-8">
+    <div class="container mx-auto max-w-4xl p-4 sm:p-6 lg:p-8">
         
-        <header class="relative text-center mb-6">
-            <img src="https://foodline-production.com/wp-content/uploads/2021/10/3752781497_3752781497.webp" alt="Foodline Production Logo" class="w-24 h-auto mx-auto mb-4 rounded-lg">
-            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Чек-лист Майстра зміни</h1>
-            <p class="text-gray-600">Контрольні точки для організації роботи</p>
-
-            <button id="contactsBtnHeader" class="absolute top-0 right-0 p-2 rounded-full text-gray-600 hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" title="Контакти">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M12 14a4 4 0 100-8 4 4 0 000 8z" />
-                </svg>
-            </button>
+        <header class="text-center mb-10">
+            <img src="https://foodline-production.com/wp-content/uploads/2021/10/3752781497_3752781497.webp" alt="Foodline Production Logo" class="w-28 h-auto mx-auto mb-4 rounded-lg">
+            <h1 class="text-3xl sm:text-4xl font-bold text-slate-800">Робочий портал Майстра зміни</h1>
+            <p class="text-slate-500 mt-2">Швидкий доступ до основних інструментів</p>
         </header>
 
-        <div class="mb-6 bg-white p-4 rounded-xl shadow-sm">
-            <label for="employeeSelect" class="block text-gray-700 text-sm font-bold mb-2">Прізвище та ім'я Майстра:</label>
-            <select id="employeeSelect" class="block w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                <option value="">Оберіть зі списку</option>
-                <!-- Employee options will be populated by JavaScript -->
-            </select>
-            <p id="employeeSelectionHint" class="text-red-500 text-xs mt-2 hidden">Будь ласка, оберіть своє ім'я, щоб розпочати роботу з чек-листом.</p>
-        </div>
-
-        <nav class="flex justify-center items-center mb-6 bg-white p-2 rounded-xl shadow-sm">
-            <button id="startShiftBtn" class="nav-button active w-1/2 text-center py-2 px-4 rounded-lg font-semibold text-gray-700 border-2 border-transparent focus:outline-none transition-all duration-300">Початок зміни</button>
-            <button id="endShiftBtn" class="nav-button w-1/2 text-center py-2 px-4 rounded-lg font-semibold text-gray-700 border-2 border-transparent focus:outline-none transition-all duration-300">Кінець зміни</button>
-        </nav>
-
         <main>
-            <!-- Start of Shift Section -->
-            <section id="startShiftSection">
-                <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-md">
-                    <div class="flex justify-between items-center mb-4">
-                         <h2 class="text-xl sm:text-2xl font-bold text-emerald-800">Завдання на початку зміни</h2>
-                         <button id="resetStart" class="text-sm font-semibold text-gray-500 hover:text-red-500 transition-colors">Скинути</button>
-                    </div>
-                    <p class="text-gray-600 mb-4">Перевірте всі пункти для успішного старту робочої зміни, забезпечення безперебійного процесу та дотримання стандартів якості й безпеки.</p>
-                    
-                    <div class="space-y-4">
-                        <div>
-                            <h3 class="font-bold text-lg text-gray-700 mb-2">1. Прийом зміни та перевірка персоналу</h3>
-                            <ul class="space-y-2" data-section="start">
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Ознайомитись з записами і результатами від попереднього майстра зміни.</span>
-                                </li>
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Ознайомитись з виробничим планом на зміну.</span>
-                                </li>
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Перевірити присутність та візуально оцінити стан здоров'я працівників.</span>
-                                </li>
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Перевірити дотримання працівниками гігієни та належного стану одягу.</span>
-                                </li>
-                            </ul>
-                        </div>
-                        
-                        <div>
-                            <h3 class="font-bold text-lg text-gray-700 mb-2">2. Контроль санітарного стану та обладнання</h3>
-                            <ul class="space-y-2" data-section="start">
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Перевірити санітарний стан виробничих приміщень (цехи варки, фасування).</span>
-                                </li>
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Перевірити чистоту та справність основного і допоміжного обладнання.</span>
-                                </li>
-                                 <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Впевнитись, що інструменти та інвентар на своїх місцях і готові до роботи.</span>
-                                </li>
-                            </ul>
-                        </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <!-- Чек-лист Майстра зміни -->
+                <a href="check-list-master.html" class="link-card">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h2>Чек-лист Майстра</h2>
+                    <p>Інтерактивні контрольні точки на зміну</p>
+                </a>
 
-                         <div>
-                            <h3 class="font-bold text-lg text-gray-700 mb-2">3. Організація виробничого процесу</h3>
-                            <ul class="space-y-2" data-section="start">
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Провести надихаючу нараду по виробничим завданням і техніки безпеки.</span>
-                                </li>
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Розподілити працівників по робочих місцях згідно з планом.</span>
-                                </li>
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Перевірити наявність необхідної сировини та матеріалів на зміну.</span>
-                                </li>
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Проконтролювати візуально якість готової продукції яка залишилась в цеху, виробленої попередньою зміною.</span>
-                                </li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-lg text-gray-700 mb-2">4. Звітність</h3>
-                            <ul class="space-y-2" data-section="start">
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Доповісти керівництву про початок виробничого процесу.</span>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </section>
+                <!-- Контакти -->
+                <a href="check-list-master.html#contacts" class="link-card">
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <h2>Контакти</h2>
+                     <p>Оперативний зв'язок з колегами</p>
+                </a>
 
-            <!-- End of Shift Section -->
-            <section id="endShiftSection" class="hidden">
-                 <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-md">
-                    <div class="flex justify-between items-center mb-4">
-                         <h2 class="text-xl sm:text-2xl font-bold text-sky-800">Завдання наприкінці зміни</h2>
-                         <button id="resetEnd" class="text-sm font-semibold text-gray-500 hover:text-red-500 transition-colors">Скинути</button>
-                    </div>
-                    <p class="text-gray-600 mb-4">Виконайте всі пункти для коректного завершення зміни, підготовки звітності та плавної передачі обов'язків наступному майстру.</p>
+                <!-- Довідковий центр -->
+                <a href="https://bit.ly/Довідковийцентрпрацівника" target="_blank" rel="noopener noreferrer" class="link-card">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                    </svg>
+                    <h2>Довідковий центр</h2>
+                    <p>База знань та інструкції FLP</p>
+                </a>
+                
+                <!-- Графік виходу на роботу -->
+                <a href="https://docs.google.com/spreadsheets/d/1B_Hz2GWotxVUmYIOi66CvqAn4XFLjF5l/edit?usp=sharing&ouid=116130068629076529517&rtpof=true&sd=true" target="_blank" rel="noopener noreferrer" class="link-card">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0h18M-4.5 12h22.5" />
+                    </svg>
+                    <h2>Графік роботи</h2>
+                    <p>Актуальний розклад змін</p>
+                </a>
+                
+                <!-- Оперативний план -->
+                <a href="https://docs.google.com/spreadsheets/d/1RxR-KDSvHeLeWhP_AlYl4Q4GqF9JhxDzKCcjPWYdl4M/edit?usp=sharing" target="_blank" rel="noopener noreferrer" class="link-card">
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+                    </svg>
+                    <h2>Оперативний план</h2>
+                    <p>Виробничі завдання на зміну</p>
+                </a>
 
-                    <div class="space-y-4">
-                        <div>
-                             <h3 class="font-bold text-lg text-gray-700 mb-2">1. Завершення виробничих операцій</h3>
-                             <ul class="space-y-2" data-section="end">
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Переконатись у виконанні виробничого плану зміни.</span>
-                                </li>
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Виписати і організувати передачу всіеї виробленої продукції на склад згідно процедур.</span>
-                                </li>
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Проконтролювати сортування та підготовку виробничих відходів до вивезення.</span>
-                                </li>
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Забезпечити прибирання робочих місць персоналом та чистоту в цеху.</span>
-                                </li>
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Переконатись, що залишки сировини та пакувальних матеріалів накриті та знаходяться на своїх місцях.</span>
-                                </li>
-                            </ul>
-                        </div>
-                        <div>
-                             <h3 class="font-bold text-lg text-gray-700 mb-2">2. Підготовка до наступної зміни</h3>
-                             <ul class="space-y-2" data-section="end">
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Сформувати замовлення на сировину та матеріали для наступної зміни.</span>
-                                </li>
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Перевірити, чи все обладнання вимкнене або переведене у безпечний режим.</span>
-                                </li>
-                            </ul>
-                        </div>
-                         <div>
-                             <h3 class="font-bold text-lg text-gray-700 mb-2">3. Звітність та передача зміни</h3>
-                             <ul class="space-y-2" data-section="end">
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Заповнити розділ коментарів  в  оперативному  плані результатами роботи (ключові події, проблеми, відхилення).</span>
-                                </li>
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Підготувати звіт про результати роботи (кількість, якість, брак, простої).</span>
-                                </li>
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Задокументувати всі випадки браку або невідповідності продукції, скласти відповідні акти.</span>
-                                </li>
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Підготувати звіт про санітарний стан на кінець зміни.</span>
-                                </li>
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Письмово передати зміну наступному майстру, повідомивши про всі важливі аспекти.</span>
-                                </li>
-                            </ul>
-                        </div>
-                        <div>
-                             <h3 class="font-bold text-lg text-gray-700 mb-2">4. Завершальні перевірки та безпека</h3>
-                             <ul class="space-y-2" data-section="end">
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Забезпечити встановлення Бактерицидних ламп на дільницях фасовки і варки (якщо нічної зміни не буде).</span>
-                                </li>
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Виключити всі непотрібні прилади (монітори, комп'ютери, освітлення і т.д.).</span>
-                                </li>
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Перевірити розміщення виробничого і складського обладнання на відповідних місцях (електричні і гідравлічні візки, прибиральний інвентар, ящики з інструментом, та інше).</span>
-                                </li>
-                            </ul>
-                        </div>
-                        <div>
-                             <h3 class="font-bold text-lg text-gray-700 mb-2">5. Комунікація та підбиття підсумків</h3>
-                             <ul class="space-y-2" data-section="end">
-                                <li class="checklist-item flex items-center p-3 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 disabled-checklist-item">
-                                    <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                                    <span class="task-text flex-1">Провести коротку нараду з командою для підбиття підсумків зміни індивідуальних  успіхів та обговорення проблемних моментів.</span>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Contacts Section -->
-            <section id="contactsSection" class="hidden">
-                 <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-md">
-                    <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Контакти для оперативного зв'язку</h2>
-                    <div class="space-y-4">
-                        <!-- Contact Card 1 -->
-                        <div class="bg-gray-50 p-4 rounded-lg flex items-center justify-between">
-                            <div>
-                                <p class="font-bold text-gray-700">Бузницький Юрій</p>
-                                <p class="text-gray-600">050-446-79-73</p>
-                            </div>
-                            <a href="tel:+380504467973" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                </svg>
-                            </a>
-                        </div>
-                        <!-- Contact Card 2 -->
-                        <div class="bg-gray-50 p-4 rounded-lg flex items-center justify-between">
-                            <div>
-                                <p class="font-bold text-gray-700">Диндар Анастасія</p>
-                                <p class="text-gray-600">066-313-31-75</p>
-                            </div>
-                            <a href="tel:+380663133175" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                </svg>
-                            </a>
-                        </div>
-                        <!-- Contact Card 3 -->
-                        <div class="bg-gray-50 p-4 rounded-lg flex items-center justify-between">
-                            <div>
-                                <p class="font-bold text-gray-700">Галагін Евгеній</p>
-                                <p class="text-gray-600">066-217-48-25</p>
-                            </div>
-                            <a href="tel:+380662174825" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                </svg>
-                            </a>
-                        </div>
-                        <!-- Contact Card 4 -->
-                        <div class="bg-gray-50 p-4 rounded-lg flex items-center justify-between">
-                            <div>
-                                <p class="font-bold text-gray-700">Матвеєва Олена</p>
-                                <p class="text-gray-600">050-334-02-67</p>
-                            </div>
-                            <a href="tel:+380503340267" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                </svg>
-                            </a>
-                        </div>
-                    </div>
-                 </div>
-            </section>
-        </main>
-    </div>
-
-    <!-- Fixed Footer for Status -->
-    <div id="footerStatus" class="fixed bottom-0 left-0 right-0 bg-white p-4 shadow-lg flex items-center justify-between z-40">
-        <div class="w-full">
-            <div class="w-full bg-gray-200 rounded-full h-2.5 mb-2">
-                <div id="currentProgressBar" class="progress-bar-fill bg-emerald-600 h-2.5 rounded-full" style="width: 0%"></div>
             </div>
-            <p id="currentStatus" class="text-sm text-gray-600 text-right">Залишилось завдань: 0</p>
-        </div>
+        </main>
+
     </div>
-
-    <!-- Modal for Completion Messages -->
-    <div id="completionModal" class="fixed inset-0 hidden flex items-center justify-center modal-overlay">
-        <div class="bg-white p-6 rounded-2xl shadow-xl max-w-sm w-full text-center modal-content">
-            <h3 id="modalMessage" class="text-xl font-bold mb-4 text-gray-800"></h3>
-            <button id="closeModalBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors">Закрити</button>
-            <a id="sendReportLink" href="#" class="block mt-4 text-blue-600 hover:underline">Надіслати звіт на пошту</a>
-        </div>
-    </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const startShiftBtn = document.getElementById('startShiftBtn');
-            const endShiftBtn = document.getElementById('endShiftBtn');
-            const contactsBtn = document.getElementById('contactsBtnHeader');
-            
-            const startShiftSection = document.getElementById('startShiftSection');
-            const endShiftSection = document.getElementById('endShiftSection');
-            const contactsSection = document.getElementById('contactsSection');
-
-            const startItems = startShiftSection.querySelectorAll('.checklist-item');
-            const endItems = endShiftSection.querySelectorAll('.checklist-item');
-
-            const resetStartBtn = document.getElementById('resetStart');
-            const resetEndBtn = document.getElementById('resetEnd');
-
-            const footerStatus = document.getElementById('footerStatus');
-            const currentProgressBar = document.getElementById('currentProgressBar');
-            const currentStatus = document.getElementById('currentStatus');
-
-            const employeeSelect = document.getElementById('employeeSelect');
-            const employeeSelectionHint = document.getElementById('employeeSelectionHint');
-            let selectedEmployee = '';
-
-            const completionModal = document.getElementById('completionModal');
-            const modalMessage = document.getElementById('modalMessage');
-            const closeModalBtn = document.getElementById('closeModalBtn');
-            const sendReportLink = document.getElementById('sendReportLink');
-
-            let currentSection = 'start'; // Track active section
-
-            const employees = [
-                "Гончарук Ольга",
-                "Шута Олександра",
-                "Заміна"
-            ];
-
-            // Populate employee dropdown
-            employees.forEach(employee => {
-                const option = document.createElement('option');
-                option.value = employee;
-                option.textContent = employee;
-                employeeSelect.appendChild(option);
-            });
-
-            // Function to enable/disable checklist items
-            const toggleChecklistItemsEnabled = (enable) => {
-                const allChecklistItems = document.querySelectorAll('.checklist-item');
-                allChecklistItems.forEach(item => {
-                    if (enable) {
-                        item.classList.remove('disabled-checklist-item');
-                    } else {
-                        item.classList.add('disabled-checklist-item');
-                    }
-                });
-            };
-
-            // Initially disable checklist items
-            toggleChecklistItemsEnabled(false);
-            employeeSelectionHint.classList.remove('hidden'); // Show hint
-
-            employeeSelect.addEventListener('change', (event) => {
-                selectedEmployee = event.target.value;
-                if (selectedEmployee) {
-                    toggleChecklistItemsEnabled(true);
-                    employeeSelectionHint.classList.add('hidden'); // Hide hint
-                } else {
-                    toggleChecklistItemsEnabled(false);
-                    employeeSelectionHint.classList.remove('hidden'); // Show hint
-                }
-            });
-
-
-            const switchView = (view) => {
-                currentSection = view;
-                
-                // Hide all sections first
-                startShiftSection.classList.add('hidden');
-                endShiftSection.classList.add('hidden');
-                contactsSection.classList.add('hidden');
-
-                // Deactivate all buttons
-                startShiftBtn.classList.remove('active');
-                endShiftBtn.classList.remove('active');
-                // The new contacts button doesn't have an 'active' state, so no need to manage it here
-
-                // Show footer by default
-                footerStatus.style.display = 'flex';
-
-                if (view === 'start') {
-                    startShiftSection.classList.remove('hidden');
-                    startShiftBtn.classList.add('active');
-                    currentProgressBar.classList.remove('bg-sky-600');
-                    currentProgressBar.classList.add('bg-emerald-600');
-                } else if (view === 'end') {
-                    endShiftSection.classList.remove('hidden');
-                    endShiftBtn.classList.add('active');
-                    currentProgressBar.classList.remove('bg-emerald-600');
-                    currentProgressBar.classList.add('bg-sky-600');
-                } else if (view === 'contacts') {
-                    contactsSection.classList.remove('hidden');
-                    // No 'active' state for the icon button, the view change is enough feedback
-                    // Hide footer status bar on contacts page
-                    footerStatus.style.display = 'none';
-                }
-                
-                updateProgress();
-            };
-
-            startShiftBtn.addEventListener('click', () => switchView('start'));
-            endShiftBtn.addEventListener('click', () => switchView('end'));
-            contactsBtn.addEventListener('click', () => switchView('contacts'));
-
-            const updateProgress = () => {
-                if (currentSection === 'contacts') return; // No progress bar for contacts
-
-                const items = (currentSection === 'start') ? startItems : endItems;
-                
-                const completedItems = Array.from(items).filter(item => item.classList.contains('completed')).length;
-                const totalItems = items.length;
-                const percentage = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
-                const remainingItems = totalItems - completedItems;
-                
-                currentProgressBar.style.width = `${percentage}%`;
-
-                if (remainingItems === 0 && totalItems > 0) {
-                    currentStatus.textContent = 'Чудова робота! Всі завдання виконано.';
-                    currentStatus.classList.add('font-bold', 'text-emerald-700');
-                    showCompletionModal(currentSection);
-                } else {
-                    currentStatus.textContent = `Залишилось завдань: ${remainingItems}`;
-                    currentStatus.classList.remove('font-bold', 'text-emerald-700');
-                }
-            };
-            
-            const handleItemClick = (event) => {
-                if (!selectedEmployee) {
-                    employeeSelectionHint.classList.remove('hidden');
-                    return;
-                }
-                const item = event.currentTarget;
-                item.classList.toggle('completed');
-                updateProgress();
-            };
-
-            startItems.forEach(item => item.addEventListener('click', handleItemClick));
-            endItems.forEach(item => item.addEventListener('click', handleItemClick));
-            
-            resetStartBtn.addEventListener('click', () => {
-                startItems.forEach(item => item.classList.remove('completed'));
-                updateProgress();
-            });
-
-            resetEndBtn.addEventListener('click', () => {
-                endItems.forEach(item => item.classList.remove('completed'));
-                updateProgress();
-            });
-
-            const showCompletionModal = (section) => {
-                let message = '';
-                if (section === 'start') {
-                    message = "Підготовка завершена. Вдалої зміни!";
-                } else {
-                    message = "Зміна завершена. Дякуємо за роботу!";
-                }
-                modalMessage.textContent = message;
-                completionModal.classList.remove('hidden');
-
-                sendReportLink.onclick = (e) => {
-                    e.preventDefault();
-                    generateAndSendReport(section);
-                };
-            };
-
-            closeModalBtn.addEventListener('click', () => {
-                completionModal.classList.add('hidden');
-            });
-
-            const generateAndSendReport = (section) => {
-                if (!selectedEmployee) {
-                    alert('Будь ласка, оберіть своє ім\'я перед відправкою звіту.');
-                    return;
-                }
-
-                const items = (section === 'start') ? startItems : endItems;
-                const sectionTitle = (section === 'start') ? 'Початок зміни' : 'Кінець зміни';
-                const date = new Date().toLocaleString('uk-UA');
-
-                let reportBody = `Звіт по чек-листу Майстра зміни\n\n`;
-                reportBody += `Розділ: ${sectionTitle}\n`;
-                reportBody += `Майстер: ${selectedEmployee}\n`;
-                reportBody += `Дата та час: ${date}\n\n`;
-                reportBody += `СТАТУС ЗАВДАНЬ:\n--------------------------------\n`;
-
-                items.forEach((item, index) => {
-                    const taskText = item.querySelector('.task-text').textContent.trim();
-                    const isCompleted = item.classList.contains('completed') ? '✅ Виконано' : '❌ Не виконано';
-                    reportBody += `${index + 1}. ${taskText}\n   Статус: ${isCompleted}\n\n`;
-                });
-
-                const emailSubject = encodeURIComponent(`Звіт Майстра: ${sectionTitle} - ${selectedEmployee}`);
-                const emailBody = encodeURIComponent(reportBody);
-                
-                const recipients = 'Buznitskiy7@gmail.com,Dyndarnastia@gmail.com'; 
-
-                window.location.href = `mailto:${recipients}?subject=${emailSubject}&body=${emailBody}`;
-            };
-
-            // Initial updates
-            updateProgress();
-            switchView('start'); 
-        });
-    </script>
-
 </body>
 </html>
 
