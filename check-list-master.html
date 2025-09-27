@@ -3,122 +3,639 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Портал для Майстра зміни</title>
+    <title>Інтерактивний чек-лист: Майстер зміни</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* Base Variables for Theming */
+        :root {
+            --bg-color: #f8fafc; /* slate-50 */
+            --card-bg-color: #ffffff;
+            --text-color: #1e293b; /* slate-800 */
+            --text-muted-color: #64748b; /* slate-500 */
+            --item-bg-color: #f1f5f9; /* slate-100 */
+            --item-hover-bg-color: #e2e8f0; /* slate-200 */
+            --border-color: #e2e8f0;
+            --priority-border-color: #fecaca; /* red-200 */
+            --header-icon-hover-bg: #e5e7eb; /* gray-200 */
+        }
+
+        .dark {
+            --bg-color: #1e293b; /* slate-800 */
+            --card-bg-color: #334155; /* slate-700 */
+            --text-color: #f1f5f9; /* slate-100 */
+            --text-muted-color: #94a3b8; /* slate-400 */
+            --item-bg-color: #475569; /* slate-600 */
+            --item-hover-bg-color: #64748b; /* slate-500 */
+            --border-color: #475569;
+            --priority-border-color: #991b1b; /* red-800 */
+            --header-icon-hover-bg: #475569; /* slate-600 */
+        }
+
         body {
-            background-color: #f8fafc; /* slate-50 */
+            background-color: var(--bg-color);
+            color: var(--text-color);
             -webkit-tap-highlight-color: transparent;
+            padding-bottom: 6rem; /* Space for fixed footer */
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
-        .link-card {
-            background-color: #ffffff;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 2rem;
-            text-decoration: none;
-            color: #1e293b; /* slate-800 */
+        
+        /* General Component Styling */
+        .card { background-color: var(--card-bg-color); }
+        .text-muted { color: var(--text-muted-color); }
+        .header-icon:hover { background-color: var(--header-icon-hover-bg); }
+
+        .checklist-item {
+            background-color: var(--item-bg-color);
+            border: 1px solid var(--border-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
-        .link-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        .checklist-item:hover { background-color: var(--item-hover-bg-color); }
+        
+        .checklist-item.completed {
+            background-color: var(--item-hover-bg-color);
+            color: var(--text-muted-color);
         }
-        .link-card svg {
-            width: 3.5rem; /* 56px */
-            height: 3.5rem; /* 56px */
-            margin-bottom: 1rem;
-            color: #059669; /* emerald-600 */
-        }
-        .link-card h2 {
-            font-size: 1.25rem; /* 20px */
-            font-weight: 700;
-        }
-         .link-card p {
-            font-size: 0.875rem; /* 14px */
-            color: #64748b; /* slate-500 */
-            margin-top: 0.5rem;
+        .checklist-item.completed .task-text { text-decoration: line-through; }
+        .checklist-item.completed .checkbox-icon::after { content: '✔'; color: #10b981; }
+        
+        .priority-item { border: 1px solid var(--priority-border-color); }
+        
+        .nav-button.active { background-color: #059669; color: white; border-color: #059669; }
+        .progress-bar-fill { transition: width 0.5s ease-in-out; }
+
+        .modal-overlay { background-color: rgba(0, 0, 0, 0.6); z-index: 1000; }
+        .modal-content { z-index: 1001; }
+        .disabled-checklist-item { pointer-events: none; opacity: 0.5; cursor: not-allowed; }
+        .comment-text { font-size: 0.875rem; color: var(--text-muted-color); padding-left: 3.25rem; }
+
+        /* Print Styles */
+        @media print {
+            body { padding-bottom: 0; }
+            header, .mb-6.bg-white, nav, #footerStatus, .modal-overlay, .actions, button, a[href^="tel"] {
+                display: none !important;
+            }
+            main, section, .card {
+                display: block !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            .checklist-item { page-break-inside: avoid; }
+            .checklist-item.completed .checkbox-icon::after { content: '✔'; }
+            .checklist-item:not(.completed) .checkbox-icon::after { content: '☐'; }
         }
     </style>
 </head>
-<body class="font-sans">
+<body class="bg-slate-50 font-sans">
 
-    <div class="container mx-auto max-w-4xl p-4 sm:p-6 lg:p-8">
+    <div class="container mx-auto max-w-3xl p-4 sm:p-6 lg:p-8">
         
-        <header class="relative text-center mb-10 pt-8 sm:pt-0">
-             <div id="current-date" class="absolute top-0 left-0 text-slate-500 text-sm sm:text-base font-medium"></div>
-            <img src="https://foodline-production.com/wp-content/uploads/2021/10/3752781497_3752781497.webp" alt="Foodline Production Logo" class="w-28 h-auto mx-auto mb-4 rounded-lg">
-            <h1 class="text-3xl sm:text-4xl font-bold text-slate-800">Робочий портал Майстра зміни</h1>
-            <p class="text-slate-500 mt-2">Швидкий доступ до основних інструментів</p>
+        <header class="relative text-center mb-6">
+             <div class="absolute top-0 left-0 text-center">
+                <a href="index.html" class="inline-block p-2 rounded-full text-muted header-icon transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" title="На головну">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                </a>
+                <div id="current-date" class="text-muted text-xs mt-1"></div>
+            </div>
+
+            <img src="https://foodline-production.com/wp-content/uploads/2021/10/3752781497_3752781497.webp" alt="Foodline Production Logo" class="w-24 h-auto mx-auto mb-4 rounded-lg">
+            <h1 class="text-2xl sm:text-3xl font-bold">Чек-лист Майстра зміни</h1>
+            <p class="text-muted">Контрольні точки для організації роботи</p>
+
+            <div class="absolute top-0 right-0 flex space-x-2">
+                 <button id="printBtn" class="p-2 rounded-full text-muted header-icon transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" title="Друк / Зберегти в PDF">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                </button>
+                 <button id="themeToggle" class="p-2 rounded-full text-muted header-icon transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" title="Темна/Світла тема">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                </button>
+                <button id="contactsBtnHeader" class="p-2 rounded-full text-muted header-icon transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" title="Контакти">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M12 14a4 4 0 100-8 4 4 0 000 8z" /></svg>
+                </button>
+            </div>
         </header>
 
+        <div class="mb-6 card p-4 rounded-xl shadow-sm">
+            <label for="employeeSelect" class="block text-sm font-bold mb-2">Прізвище та ім'я Майстра:</label>
+            <select id="employeeSelect" class="block w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 card text-muted">
+                <option value="">Оберіть зі списку</option>
+            </select>
+            <p id="employeeSelectionHint" class="text-red-500 text-xs mt-2 hidden">Будь ласка, оберіть своє ім'я, щоб розпочати роботу з чек-листом.</p>
+        </div>
+
+        <nav class="flex justify-center items-center mb-6 card p-2 rounded-xl shadow-sm">
+            <button id="startShiftBtn" class="nav-button active w-1/2 text-center py-2 px-4 rounded-lg font-semibold border border-gray-300 dark:border-slate-600 focus:outline-none transition-all duration-300">Початок зміни</button>
+            <button id="endShiftBtn" class="nav-button w-1/2 text-center py-2 px-4 rounded-lg font-semibold border border-gray-300 dark:border-slate-600 focus:outline-none transition-all duration-300">Кінець зміни</button>
+        </nav>
+
         <main>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                
-                <!-- Чек-лист Майстра зміни -->
-                <a href="check-list-master.html" class="link-card">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <h2>Чек-лист Майстра</h2>
-                    <p>Інтерактивні контрольні точки на зміну</p>
-                </a>
+            <!-- Start of Shift Section -->
+            <section id="startShiftSection">
+                <div class="card p-4 sm:p-6 rounded-2xl shadow-md">
+                    <div class="flex justify-between items-center mb-4">
+                         <h2 class="text-xl sm:text-2xl font-bold text-emerald-800">Завдання на початку зміни</h2>
+                         <button id="resetStart" class="text-sm font-semibold text-muted hover:text-red-500 transition-colors">Скинути</button>
+                    </div>
+                    <p class="text-muted mb-4">Перевірте всі пункти для успішного старту робочої зміни, забезпечення безперебійного процесу та дотримання стандартів якості й безпеки.</p>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <h3 class="font-bold text-lg mb-2">1. Прийом зміни та перевірка персоналу</h3>
+                            <ul class="space-y-2" data-section="start">
+                                <li id="start-1-1" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="start-1-2" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="start-1-3" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="start-1-4" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg mb-2">2. Контроль санітарного стану та обладнання</h3>
+                            <ul class="space-y-2" data-section="start">
+                                <li id="start-2-1" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="start-2-2" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="start-2-3" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg mb-2">3. Організація виробничого процесу</h3>
+                            <ul class="space-y-2" data-section="start">
+                                <li id="start-3-1" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="start-3-2" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="start-3-3" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="start-3-4" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg mb-2">4. Звітність</h3>
+                            <ul class="space-y-2" data-section="start">
+                                <li id="start-4-1" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <!-- End of Shift Section -->
+            <section id="endShiftSection" class="hidden">
+                 <div class="card p-4 sm:p-6 rounded-2xl shadow-md">
+                    <div class="flex justify-between items-center mb-4">
+                         <h2 class="text-xl sm:text-2xl font-bold text-sky-800">Завдання наприкінці зміни</h2>
+                         <button id="resetEnd" class="text-sm font-semibold text-muted hover:text-red-500 transition-colors">Скинути</button>
+                    </div>
+                    <p class="text-muted mb-4">Виконайте всі пункти для коректного завершення зміни, підготовки звітності та плавної передачі обов'язків наступному майстру.</p>
 
-                <!-- Контакти -->
-                <a href="check-list-master.html#contacts" class="link-card">
-                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <h2>Контакти</h2>
-                     <p>Оперативний зв'язок з колегами</p>
-                </a>
-
-                <!-- Довідковий центр -->
-                <a href="https://sites.google.com/view/forstaf/%D0%B3%D0%BE%D0%BB%D0%BE%D0%B2%D0%BD%D0%B0-%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D0%B0" target="_blank" rel="noopener noreferrer" class="link-card">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-                    </svg>
-                    <h2>Довідковий центр</h2>
-                    <p>База знань та інструкції FLP</p>
-                </a>
-                
-                <!-- Графік виходу на роботу -->
-                <a href="https://docs.google.com/spreadsheets/d/1B_Hz2GWotxVUmYIOi66CvqAn4XFLjF5l/edit?usp=sharing&ouid=116130068629076529517&rtpof=true&sd=true" target="_blank" rel="noopener noreferrer" class="link-card">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0h18M-4.5 12h22.5" />
-                    </svg>
-                    <h2>Графік роботи</h2>
-                    <p>Актуальний розклад змін</p>
-                </a>
-                
-                <!-- Оперативний план -->
-                <a href="https://docs.google.com/spreadsheets/d/1RxR-KDSvHeLeWhP_AlYl4Q4GqF9JhxDzKCcjPWYdl4M/edit?usp=sharing" target="_blank" rel="noopener noreferrer" class="link-card">
-                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
-                    </svg>
-                    <h2>Оперативний план</h2>
-                    <p>Виробничі завдання на зміну</p>
-                </a>
-
-            </div>
+                    <div class="space-y-3">
+                        <div>
+                             <h3 class="font-bold text-lg mb-2">1. Завершення виробничих операцій</h3>
+                             <ul class="space-y-2" data-section="end">
+                                <li id="end-1-1" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="end-1-2" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="end-1-3" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="end-1-4" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="end-1-5" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                             </ul>
+                        </div>
+                        <div>
+                             <h3 class="font-bold text-lg mb-2">2. Підготовка до наступної зміни</h3>
+                             <ul class="space-y-2" data-section="end">
+                                <li id="end-2-1" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="end-2-2" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                             </ul>
+                        </div>
+                         <div>
+                             <h3 class="font-bold text-lg mb-2">3. Звітність та передача зміни</h3>
+                             <ul class="space-y-2" data-section="end">
+                                <li id="end-3-1" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="end-3-2" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="end-3-3" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="end-3-4" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="end-3-5" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                             </ul>
+                        </div>
+                        <div>
+                             <h3 class="font-bold text-lg mb-2">4. Завершальні перевірки та безпека</h3>
+                             <ul class="space-y-2" data-section="end">
+                                <li id="end-4-1" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="end-4-2" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="end-4-3" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                             </ul>
+                        </div>
+                        <div>
+                             <h3 class="font-bold text-lg mb-2">5. Комунікація та підбиття підсумків</h3>
+                             <ul class="space-y-2" data-section="end">
+                                <li id="end-5-1" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                             </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Contacts Section -->
+            <section id="contactsSection" class="hidden">
+                 <div class="card p-4 sm:p-6 rounded-2xl shadow-md">
+                    <h2 class="text-xl sm:text-2xl font-bold mb-4">Контакти для оперативного зв'язку</h2>
+                    <div class="space-y-4">
+                        <!-- Emergency Contact Card -->
+                        <div class="bg-red-50 dark:bg-red-900/30 border-2 border-red-200 dark:border-red-800 p-4 rounded-lg flex items-center justify-between">
+                            <div>
+                                <p class="font-bold">Екстрені служби</p>
+                                <p class="text-red-600 dark:text-red-400">112</p>
+                            </div>
+                            <a href="tel:112" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors">
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                            </a>
+                        </div>
+                    </div>
+                 </div>
+            </section>
         </main>
-
     </div>
+
+    <!-- Fixed Footer -->
+    <div id="footerStatus" class="fixed bottom-0 left-0 right-0 card p-4 shadow-lg flex items-center justify-between z-40">
+        <div class="w-full">
+            <div class="w-full bg-gray-200 dark:bg-slate-600 rounded-full h-2.5 mb-2">
+                <div id="currentProgressBar" class="progress-bar-fill bg-emerald-600 h-2.5 rounded-full" style="width: 0%"></div>
+            </div>
+            <p id="currentStatus" class="text-sm text-muted text-right">Залишилось завдань: 0</p>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="completionModal" class="fixed inset-0 hidden items-center justify-center modal-overlay"></div>
+    <div id="commentModal" class="fixed inset-0 hidden items-center justify-center modal-overlay"></div>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const dateElement = document.getElementById('current-date');
-            if (dateElement) {
-                const now = new Date();
-                const options = { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' };
-                const formattedDate = new Intl.DateTimeFormat('uk-UA', options).format(now);
-                dateElement.textContent = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+            const checklistData = {
+                'start-1-1': 'Ознайомитись з записами і результатами від попереднього майстра зміни.',
+                'start-1-2': 'Ознайомитись з виробничим планом на зміну.',
+                'start-1-3': 'Перевірити присутність та візуально оцінити стан здоров\'я працівників.',
+                'start-1-4': 'Перевірити дотримання працівниками гігієни та належного стану одягу.',
+                'start-2-1': 'Перевірити санітарний стан виробничих приміщень (цехи варки, фасування).',
+                'start-2-2': 'Перевірити чистоту та справність основного і допоміжного обладнання.',
+                'start-2-3': 'Впевнитись, що інструменти та інвентар на своїх місцях і готові до роботи.',
+                'start-3-1': 'Провести надихаючу нараду по виробничим завданням і техніки безпеки.',
+                'start-3-2': 'Розподілити працівників по робочих місцях згідно з планом.',
+                'start-3-3': 'Перевірити наявність необхідної сировини та матеріалів на зміну.',
+                'start-3-4': 'Проконтролювати візуально якість готової продукції яка залишилась в цеху, виробленої попередньою зміною.',
+                'start-4-1': 'Доповісти керівництву про початок виробничого процесу.',
+                'end-1-1': 'Переконатись у виконанні виробничого плану зміни.',
+                'end-1-2': 'Виписати і організувати передачу всіеї виробленої продукції на склад згідно процедур.',
+                'end-1-3': 'Проконтролювати сортування та підготовку виробничих відходів до вивезення.',
+                'end-1-4': 'Забезпечити прибирання робочих місць персоналом та чистоту в цеху.',
+                'end-1-5': 'Переконатись, що залишки сировини та пакувальних матеріалів накриті та знаходяться на своїх місцях.',
+                'end-2-1': 'Сформувати замовлення на сировину та матеріали для наступної зміни.',
+                'end-2-2': 'Перевірити, чи все обладнання вимкнене або переведене у безпечний режим.',
+                'end-3-1': 'Заповнити розділ коментарів  в  оперативному  плані результатами роботи (ключові події, проблеми, відхилення).',
+                'end-3-2': 'Підготувати звіт про результати роботи (кількість, якість, брак, простої).',
+                'end-3-3': 'Задокументувати всі випадки браку або невідповідності продукції, скласти відповідні акти.',
+                'end-3-4': 'Підготувати звіт про санітарний стан на кінець зміни.',
+                'end-3-5': 'Письмово передати зміну наступному майстру, повідомивши про всі важливі аспекти.',
+                'end-4-1': 'Забезпечити встановлення Бактерицидних ламп на дільницях фасовки і варки (якщо нічної зміни не буде).',
+                'end-4-2': 'Виключити всі непотрібні прилади (монітори, комп\'ютери, освітлення і т.д.).',
+                'end-4-3': 'Перевірити розміщення виробничого і складського обладнання на відповідних місцях (електричні і гідравлічні візки, прибиральний інвентар, ящики з інструментом, та інше).',
+                'end-5-1': 'Провести коротку нараду з командою для підбиття підсумків зміни індивідуальних  успіхів та обговорення проблемних моментів.',
+            };
+
+            const contactsData = [
+                { name: 'Бузницький Юрій', phone: '050-446-79-73', tel: '+380504467973' },
+                { name: 'Диндар Анастасія', phone: '066-313-31-75', tel: '+380663133175' },
+                { name: 'Галагін Евгеній', phone: '066-217-48-25', tel: '+380662174825' },
+                { name: 'Матвеєва Олена', phone: '050-334-02-67', tel: '+380503340267' },
+            ];
+            
+            // Populate checklist items
+            Object.keys(checklistData).forEach(id => {
+                const itemEl = document.getElementById(id);
+                if(itemEl) {
+                    itemEl.innerHTML = `
+                        <div class="flex items-center w-full">
+                            <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 dark:border-slate-500 rounded-md flex items-center justify-center text-lg font-bold"></span>
+                            <span class="task-text flex-1">${checklistData[id]}</span>
+                            <div class="actions ml-auto flex items-center">
+                                <button class="comment-btn p-1 rounded-full hover:bg-gray-200 dark:hover:bg-slate-600" title="Додати коментар">
+                                    <svg class="h-5 w-5 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="comment-text mt-1 hidden w-full"></div>
+                    `;
+                }
+            });
+
+            // Populate contacts
+            const contactsContainer = document.querySelector('#contactsSection .space-y-4');
+            contactsData.forEach(contact => {
+                const contactEl = document.createElement('div');
+                contactEl.className = 'bg-gray-50 dark:bg-slate-600 p-4 rounded-lg flex items-center justify-between';
+                contactEl.innerHTML = `
+                    <div>
+                        <p class="font-bold">${contact.name}</p>
+                        <p class="text-muted">${contact.phone}</p>
+                    </div>
+                    <a href="tel:${contact.tel}" class="bg-green-500 hover:bg-green-600 dark:bg-orange-600 dark:hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                    </a>`;
+                contactsContainer.appendChild(contactEl);
+            });
+
+            // Populate Modals
+            document.getElementById('completionModal').innerHTML = `
+                <div class="card p-6 rounded-2xl shadow-xl max-w-sm w-full text-center modal-content">
+                    <h3 id="modalMessage" class="text-xl font-bold mb-4"></h3>
+                    <button id="closeModalBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors">Закрити</button>
+                    <a id="sendReportLink" href="#" class="block mt-4 text-blue-600 hover:underline">Надіслати звіт на пошту</a>
+                </div>`;
+
+            document.getElementById('commentModal').innerHTML = `
+                <div class="card p-6 rounded-2xl shadow-xl max-w-sm w-full text-center modal-content">
+                    <h3 class="text-xl font-bold mb-4">Ваш коментар</h3>
+                    <textarea id="commentTextarea" class="w-full p-2 border rounded-lg card text-muted" rows="4"></textarea>
+                    <div class="mt-4 flex justify-end space-x-2">
+                         <button id="cancelCommentBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md transition-colors">Скасувати</button>
+                         <button id="saveCommentBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors">Зберегти</button>
+                    </div>
+                </div>`;
+            
+            // Element Refs
+            const allChecklistItems = document.querySelectorAll('.checklist-item');
+            const employeeSelect = document.getElementById('employeeSelect');
+            let appState = {};
+            const STORAGE_KEY = 'shiftChecklistState';
+
+            // --- State Management ---
+            const saveState = () => {
+                const state = {
+                    checklist: {},
+                    employee: employeeSelect.value,
+                    theme: document.body.classList.contains('dark') ? 'dark' : 'light'
+                };
+                allChecklistItems.forEach(item => {
+                    state.checklist[item.id] = {
+                        completed: item.classList.contains('completed'),
+                        comment: item.querySelector('.comment-text').textContent
+                    };
+                });
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            };
+
+            const loadState = () => {
+                const savedState = localStorage.getItem(STORAGE_KEY);
+                if (savedState) {
+                    appState = JSON.parse(savedState);
+
+                    // Restore checklist items
+                    if (appState.checklist) {
+                        allChecklistItems.forEach(item => {
+                            const itemState = appState.checklist[item.id];
+                            if (itemState) {
+                                if (itemState.completed) item.classList.add('completed');
+                                if (itemState.comment) {
+                                    const commentEl = item.querySelector('.comment-text');
+                                    commentEl.textContent = itemState.comment;
+                                    commentEl.classList.remove('hidden');
+                                }
+                            }
+                        });
+                    }
+
+                    // Restore employee
+                    if (appState.employee) {
+                        employeeSelect.value = appState.employee;
+                        if(employeeSelect.value) {
+                             document.querySelectorAll('.checklist-item').forEach(i => i.classList.remove('disabled-checklist-item'));
+                             document.getElementById('employeeSelectionHint').classList.add('hidden');
+                        }
+                    }
+
+                    // Restore theme
+                    if (appState.theme === 'dark') {
+                        document.body.classList.add('dark');
+                    }
+                }
+            };
+            
+            // --- UI & Event Listeners ---
+            const commentModal = document.getElementById('commentModal');
+            const commentTextarea = document.getElementById('commentTextarea');
+            let currentCommentItem = null;
+
+            allChecklistItems.forEach(item => {
+                // Click on the item itself (toggle completed)
+                item.addEventListener('click', (event) => {
+                     if (employeeSelect.value && !event.target.closest('.actions')) {
+                        item.classList.toggle('completed');
+                        saveState();
+                        updateProgress();
+                    } else if (!employeeSelect.value) {
+                        document.getElementById('employeeSelectionHint').classList.remove('hidden');
+                    }
+                });
+
+                // Click on comment button
+                item.querySelector('.comment-btn').addEventListener('click', () => {
+                    currentCommentItem = item;
+                    commentTextarea.value = item.querySelector('.comment-text').textContent;
+                    commentModal.style.display = 'flex';
+                });
+            });
+
+            document.getElementById('saveCommentBtn').addEventListener('click', () => {
+                if (currentCommentItem) {
+                    const commentEl = currentCommentItem.querySelector('.comment-text');
+                    const newComment = commentTextarea.value.trim();
+                    commentEl.textContent = newComment;
+                    commentEl.classList.toggle('hidden', !newComment);
+                    saveState();
+                }
+                commentModal.style.display = 'none';
+            });
+            
+            document.getElementById('cancelCommentBtn').addEventListener('click', () => {
+                commentModal.style.display = 'none';
+            });
+            
+            const completionModal = document.getElementById('completionModal');
+            
+            const generateAndSendReport = (section) => {
+                if (!employeeSelect.value) {
+                    alert('Будь ласка, оберіть своє ім\'я перед відправкою звіту.');
+                    return;
+                }
+
+                const items = document.querySelectorAll(`#${section}ShiftSection .checklist-item`);
+                const sectionTitle = (section === 'start') ? 'Початок зміни' : 'Кінець зміни';
+                const date = new Date().toLocaleString('uk-UA');
+
+                let reportBody = `Звіт по чек-листу Майстра зміни\n\n`;
+                reportBody += `Розділ: ${sectionTitle}\n`;
+                reportBody += `Майстер: ${employeeSelect.value}\n`;
+                reportBody += `Дата та час: ${date}\n\n`;
+                reportBody += `СТАТУС ЗАВДАНЬ:\n--------------------------------\n`;
+
+                items.forEach((item, index) => {
+                    const taskText = item.querySelector('.task-text').textContent.trim();
+                    const isCompleted = item.classList.contains('completed') ? '✅ Виконано' : '❌ Не виконано';
+                    const comment = item.querySelector('.comment-text').textContent.trim();
+                    
+                    reportBody += `${index + 1}. ${taskText}\n   Статус: ${isCompleted}\n`;
+                    if (comment) {
+                        reportBody += `   Коментар: ${comment}\n`;
+                    }
+                    reportBody += `\n`;
+                });
+
+                const emailSubject = encodeURIComponent(`Звіт Майстра: ${sectionTitle} - ${employeeSelect.value}`);
+                const emailBody = encodeURIComponent(reportBody);
+                
+                const recipients = 'Buznitskiy7@gmail.com,Dyndarnastia@gmail.com'; 
+
+                window.location.href = `mailto:${recipients}?subject=${emailSubject}&body=${emailBody}`;
+            };
+
+            const showCompletionModal = (section) => {
+                const modalMessage = document.getElementById('modalMessage');
+                const sendReportLink = document.getElementById('sendReportLink');
+                
+                let message = '';
+                if (section === 'start') {
+                    message = "Підготовка завершена. Вдалої зміни!";
+                } else {
+                    message = "Зміна завершена. Дякуємо за роботу!";
+                }
+                modalMessage.textContent = message;
+                completionModal.style.display = 'flex';
+
+                sendReportLink.onclick = (e) => {
+                    e.preventDefault();
+                    generateAndSendReport(section);
+                };
+            };
+            
+            // Other event listeners (navigation, reset, etc.)
+            const startShiftBtn = document.getElementById('startShiftBtn');
+            const endShiftBtn = document.getElementById('endShiftBtn');
+            const contactsBtn = document.getElementById('contactsBtnHeader');
+            const startShiftSection = document.getElementById('startShiftSection');
+            const endShiftSection = document.getElementById('endShiftSection');
+            const contactsSection = document.getElementById('contactsSection');
+            const footerStatus = document.getElementById('footerStatus');
+            const currentProgressBar = document.getElementById('currentProgressBar');
+            const currentStatus = document.getElementById('currentStatus');
+            const resetStartBtn = document.getElementById('resetStart');
+            const resetEndBtn = document.getElementById('resetEnd');
+            const themeToggle = document.getElementById('themeToggle');
+            const printBtn = document.getElementById('printBtn');
+            const employeeSelectionHint = document.getElementById('employeeSelectionHint');
+            
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            
+            let currentSection = 'start';
+
+            const employees = ["Гончарук Ольга", "Шута Олександра", "Заміна"];
+            employees.forEach(e => employeeSelect.add(new Option(e, e)));
+
+            employeeSelect.addEventListener('change', () => {
+                if (employeeSelect.value) {
+                    document.querySelectorAll('.checklist-item').forEach(i => i.classList.remove('disabled-checklist-item'));
+                    employeeSelectionHint.classList.add('hidden');
+                } else {
+                    document.querySelectorAll('.checklist-item').forEach(i => i.classList.add('disabled-checklist-item'));
+                }
+                saveState();
+            });
+
+            const switchView = (view) => {
+                currentSection = view;
+                [startShiftSection, endShiftSection, contactsSection].forEach(s => s.classList.add('hidden'));
+                [startShiftBtn, endShiftBtn].forEach(b => b.classList.remove('active'));
+                
+                footerStatus.style.display = 'flex';
+
+                if (view === 'start') {
+                    startShiftSection.classList.remove('hidden');
+                    startShiftBtn.classList.add('active');
+                } else if (view === 'end') {
+                    endShiftSection.classList.remove('hidden');
+                    endShiftBtn.classList.add('active');
+                } else if (view === 'contacts') {
+                    contactsSection.classList.remove('hidden');
+                    footerStatus.style.display = 'none';
+                }
+                updateProgress();
+            };
+
+            const updateProgress = () => {
+                if (currentSection === 'contacts') return;
+                const items = document.querySelectorAll(`#${currentSection}ShiftSection .checklist-item`);
+                const completedItems = document.querySelectorAll(`#${currentSection}ShiftSection .checklist-item.completed`).length;
+                const total = items.length;
+                const percentage = total > 0 ? (completedItems / total) * 100 : 0;
+                
+                currentProgressBar.style.width = `${percentage}%`;
+                if(total > 0 && completedItems === total) {
+                     currentStatus.textContent = 'Чудова робота! Всі завдання виконано.';
+                     showCompletionModal(currentSection);
+                } else {
+                     currentStatus.textContent = `Залишилось завдань: ${total - completedItems}`;
+                }
+            };
+            
+            resetStartBtn.addEventListener('click', () => {
+                 document.querySelectorAll('#startShiftSection .checklist-item').forEach(item => {
+                    item.classList.remove('completed');
+                    const commentEl = item.querySelector('.comment-text');
+                    commentEl.textContent = '';
+                    commentEl.classList.add('hidden');
+                 });
+                 saveState();
+                 updateProgress();
+            });
+
+            resetEndBtn.addEventListener('click', () => {
+                document.querySelectorAll('#endShiftSection .checklist-item').forEach(item => {
+                    item.classList.remove('completed');
+                    const commentEl = item.querySelector('.comment-text');
+                    commentEl.textContent = '';
+                    commentEl.classList.add('hidden');
+                });
+                saveState();
+                updateProgress();
+            });
+
+            themeToggle.addEventListener('click', () => {
+                document.body.classList.toggle('dark');
+                saveState();
+            });
+            
+            printBtn.addEventListener('click', () => window.print());
+
+            startShiftBtn.addEventListener('click', () => switchView('start'));
+            endShiftBtn.addEventListener('click', () => switchView('end'));
+            contactsBtn.addEventListener('click', () => switchView('contacts'));
+            closeModalBtn.addEventListener('click', () => completionModal.style.display = 'none');
+
+            // --- Initial Load ---
+            const displayDate = () => {
+                const dateElement = document.getElementById('current-date');
+                if (dateElement) {
+                    const now = new Date();
+                    const options = { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' };
+                    const formattedDate = new Intl.DateTimeFormat('uk-UA', options).format(now);
+                    dateElement.textContent = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+                }
+            };
+
+            loadState();
+            displayDate();
+            const hash = window.location.hash;
+            if (hash === '#contacts') {
+                switchView('contacts');
+            } else {
+                switchView('start');
             }
         });
     </script>
+
 </body>
 </html>
 
