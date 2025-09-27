@@ -50,7 +50,7 @@
     <div class="container mx-auto max-w-4xl p-4 sm:p-6 lg:p-8">
         
         <header class="relative text-center mb-10 pt-8 sm:pt-0">
-             <div id="current-date" class="absolute top-0 right-0 text-slate-500 text-sm sm:text-base font-medium"></div>
+             <div id="current-date" class="absolute top-0 left-0 text-slate-500 text-sm sm:text-base font-medium"></div>
             <img src="https://foodline-production.com/wp-content/uploads/2021/10/3752781497_3752781497.webp" alt="Foodline Production Logo" class="w-28 h-auto mx-auto mb-4 rounded-lg">
             <h1 class="text-3xl sm:text-4xl font-bold text-slate-800">Робочий портал Майстра зміни</h1>
             <p class="text-slate-500 mt-2">Швидкий доступ до основних інструментів</p>
@@ -78,7 +78,7 @@
                 </a>
 
                 <!-- Довідковий центр -->
-                <a href="https://bit.ly/Довідковийцентрпрацівника" target="_blank" rel="noopener noreferrer" class="link-card">
+                <a href="https://sites.google.com/view/forstaf/%D0%B3%D0%BE%D0%BB%D0%BE%D0%B2%D0%BD%D0%B0-%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D0%B0" target="_blank" rel="noopener noreferrer" class="link-card">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
                     </svg>
@@ -113,7 +113,7 @@
             const dateElement = document.getElementById('current-date');
             if (dateElement) {
                 const now = new Date();
-                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                const options = { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' };
                 const formattedDate = new Intl.DateTimeFormat('uk-UA', options).format(now);
                 dateElement.textContent = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
             }
