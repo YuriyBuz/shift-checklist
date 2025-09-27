@@ -467,8 +467,8 @@
 
                 const emailSubject = encodeURIComponent(`Звіт Майстра: ${sectionTitle} - ${selectedEmployee}`);
                 const emailBody = encodeURIComponent(reportBody);
-                // Enter recipient emails here
-                const recipients = ''; 
+                
+                const recipients = 'Buznitskiy7@gmail.com,Dyndarnastia@gmail.com'; 
 
                 window.location.href = `mailto:${recipients}?subject=${emailSubject}&body=${emailBody}`;
             };
