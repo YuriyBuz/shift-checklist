@@ -133,7 +133,7 @@
                 <div class="card p-4 sm:p-6 rounded-2xl shadow-md">
                     <div class="flex justify-between items-center mb-4">
                          <h2 class="text-xl sm:text-2xl font-bold text-emerald-800">Завдання на початку зміни</h2>
-                         <button id="resetStart" class="text-sm font-semibold text-muted hover:text-red-500 transition-colors">Скинути</button>
+                         <button id="resetStart" class="px-3 py-1 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-md">Скинути</button>
                     </div>
                     <p class="text-muted mb-4">Перевірте всі пункти для успішного старту робочої зміни, забезпечення безперебійного процесу та дотримання стандартів якості й безпеки.</p>
                     
@@ -153,6 +153,7 @@
                                 <li id="start-2-1" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
                                 <li id="start-2-2" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
                                 <li id="start-2-3" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="start-2-4" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li> <!-- NEW TASK ADDED HERE -->
                             </ul>
                         </div>
                         <div>
@@ -178,7 +179,7 @@
                  <div class="card p-4 sm:p-6 rounded-2xl shadow-md">
                     <div class="flex justify-between items-center mb-4">
                          <h2 class="text-xl sm:text-2xl font-bold text-sky-800">Завдання наприкінці зміни</h2>
-                         <button id="resetEnd" class="text-sm font-semibold text-muted hover:text-red-500 transition-colors">Скинути</button>
+                         <button id="resetEnd" class="px-3 py-1 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-md">Скинути</button>
                     </div>
                     <p class="text-muted mb-4">Виконайте всі пункти для коректного завершення зміни, підготовки звітності та плавної передачі обов'язків наступному майстру.</p>
 
@@ -216,6 +217,7 @@
                                 <li id="end-4-1" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
                                 <li id="end-4-2" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
                                 <li id="end-4-3" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="end-4-4" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li> <!-- NEW TASK ADDED HERE -->
                              </ul>
                         </div>
                         <div>
@@ -273,6 +275,7 @@
                 'start-2-1': 'Перевірити санітарний стан виробничих приміщень (цехи варки, фасування).',
                 'start-2-2': 'Перевірити чистоту та справність основного і допоміжного обладнання.',
                 'start-2-3': 'Впевнитись, що інструменти та інвентар на своїх місцях і готові до роботи.',
+                'start-2-4': 'Перевірити цілісність предметів зі скла та крихких матеріалів (окуляри, вікна, скляні предмети) технологічного інвентарю та колючо-ріжучих предметів.', // NEW TASK ADDED
                 'start-3-1': 'Провести надихаючу нараду по виробничим завданням і техніки безпеки.',
                 'start-3-2': 'Розподілити працівників по робочих місцях згідно з планом.',
                 'start-3-3': 'Перевірити наявність необхідної сировини та матеріалів на зміну.',
@@ -293,6 +296,7 @@
                 'end-4-1': 'Забезпечити встановлення Бактерицидних ламп на дільницях фасовки і варки (якщо нічної зміни не буде).',
                 'end-4-2': 'Виключити всі непотрібні прилади (монітори, комп\'ютери, освітлення і т.д.).',
                 'end-4-3': 'Перевірити розміщення виробничого і складського обладнання на відповідних місцях (електричні і гідравлічні візки, прибиральний інвентар, ящики з інструментом, та інше).',
+                'end-4-4': 'Перевірити цілісність предметів зі скла та крихких матеріалів (окуляри, вікна, скляні предмети) технологічного інвентарю та колючо-ріжучих предметів.', // NEW TASK ADDED
                 'end-5-1': 'Провести коротку нараду з командою для підбиття підсумків зміни індивідуальних  успіхів та обговорення проблемних моментів.',
             };
 
@@ -638,4 +642,3 @@
 
 </body>
 </html>
-
