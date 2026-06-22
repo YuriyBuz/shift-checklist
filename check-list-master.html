@@ -49,14 +49,33 @@
             border: 1px solid var(--border-color);
             transition: background-color 0.3s ease, color 0.3s ease;
         }
-        .checklist-item:hover { background-color: var(--item-hover-bg-color); }
         
-        .checklist-item.completed {
+        /* New Status Styles */
+        .checklist-item.status-completed {
             background-color: var(--item-hover-bg-color);
-            color: var(--text-muted-color);
         }
-        .checklist-item.completed .task-text { text-decoration: line-through; }
-        .checklist-item.completed .checkbox-icon::after { content: '✔'; color: #10b981; }
+        .checklist-item.status-completed .task-text { 
+            color: var(--text-muted-color); 
+        }
+        .checklist-item.status-completed .btn-complete {
+            background-color: #10b981; /* emerald-500 */
+            color: white;
+            border-color: #10b981;
+        }
+
+        .checklist-item.status-failed {
+            background-color: #fef2f2; /* red-50 */
+            border-color: #fca5a5; /* red-300 */
+        }
+        .dark .checklist-item.status-failed {
+            background-color: #450a0a; /* red-950 */
+            border-color: #7f1d1d; /* red-900 */
+        }
+        .checklist-item.status-failed .btn-fail {
+            background-color: #ef4444; /* red-500 */
+            color: white;
+            border-color: #ef4444;
+        }
         
         .priority-item { border: 1px solid var(--priority-border-color); }
         
@@ -66,7 +85,8 @@
         .modal-overlay { background-color: rgba(0, 0, 0, 0.6); z-index: 1000; }
         .modal-content { z-index: 1001; }
         .disabled-checklist-item { pointer-events: none; opacity: 0.5; cursor: not-allowed; }
-        .comment-text { font-size: 0.875rem; color: var(--text-muted-color); padding-left: 3.25rem; }
+        .comment-text { font-size: 0.875rem; color: var(--text-muted-color); margin-top: 0.5rem; border-left: 2px solid #cbd5e1; padding-left: 0.5rem; }
+        .dark .comment-text { border-left-color: #475569; }
 
         /* Print Styles */
         @media print {
@@ -80,14 +100,12 @@
                 border: none !important;
             }
             .checklist-item { page-break-inside: avoid; }
-            .checklist-item.completed .checkbox-icon::after { content: '✔'; }
-            .checklist-item:not(.completed) .checkbox-icon::after { content: '☐'; }
         }
     </style>
 </head>
 <body class="bg-slate-50 font-sans">
 
-    <div class="container mx-auto max-w-3xl p-4 sm:p-6 lg:p-8">
+    <div class="container mx-auto max-w-4xl p-4 sm:p-6 lg:p-8">
         
         <header class="relative text-center mb-6">
              <div class="absolute top-0 left-0 text-center">
@@ -130,96 +148,99 @@
         <main>
             <section id="startShiftSection">
                 <div class="card p-4 sm:p-6 rounded-2xl shadow-md">
-                    <div class="flex justify-between items-center mb-4">
+                    <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
                          <h2 class="text-xl sm:text-2xl font-bold text-emerald-800">Завдання на початку зміни</h2>
-                         <button id="resetStart" class="px-3 py-1 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-md">Скинути</button>
+                         <button id="resetStart" class="px-3 py-1 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-md">Скинути все</button>
                     </div>
-                    <p class="text-muted mb-4">Перевірте всі пункти для успішного старту робочої зміни, забезпечення безперебійного процесу та дотримання стандартів якості й безпеки.</p>
+                    <p class="text-muted mb-4 text-sm sm:text-base">Перевірте всі пункти для успішного старту робочої зміни, забезпечення безперебійного процесу та дотримання стандартів якості й безпеки.</p>
                     
-                    <div class="space-y-3">
+                    <div class="space-y-4">
                         <div>
-                            <h3 class="font-bold text-lg mb-2">1. Прийом зміни та перевірка персоналу</h3>
+                            <h3 class="font-bold text-lg mb-2 border-b pb-1 dark:border-slate-600">1. Прийом зміни та перевірка персоналу</h3>
                             <ul class="space-y-2" data-section="start">
-                                <li id="start-1-1" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="start-1-2" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="start-1-3" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="start-1-4" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="start-1-1" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="start-1-2" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="start-1-3" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="start-1-4" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
                             </ul>
                         </div>
                         <div>
-                            <h3 class="font-bold text-lg mb-2">2. Контроль санітарного стану та обладнання</h3>
+                            <h3 class="font-bold text-lg mb-2 border-b pb-1 dark:border-slate-600">2. Контроль санітарного стану та обладнання</h3>
                             <ul class="space-y-2" data-section="start">
-                                <li id="start-2-1" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="start-2-2" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="start-2-3" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="start-2-4" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li> </ul>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-lg mb-2">3. Організація виробничого процесу</h3>
-                            <ul class="space-y-2" data-section="start">
-                                <li id="start-3-1" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="start-3-2" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="start-3-3" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="start-3-4" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="start-2-1" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="start-2-2" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="start-2-3" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="start-2-4" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li> 
                             </ul>
                         </div>
                         <div>
-                            <h3 class="font-bold text-lg mb-2">4. Звітність</h3>
+                            <h3 class="font-bold text-lg mb-2 border-b pb-1 dark:border-slate-600">3. Організація виробничого процесу</h3>
                             <ul class="space-y-2" data-section="start">
-                                <li id="start-4-1" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="start-3-1" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="start-3-2" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="start-3-3" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="start-3-4" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg mb-2 border-b pb-1 dark:border-slate-600">4. Звітність</h3>
+                            <ul class="space-y-2" data-section="start">
+                                <li id="start-4-1" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
                             </ul>
                         </div>
                     </div>
                 </div>
             </section>
+
             <section id="endShiftSection" class="hidden">
                  <div class="card p-4 sm:p-6 rounded-2xl shadow-md">
-                    <div class="flex justify-between items-center mb-4">
+                    <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
                          <h2 class="text-xl sm:text-2xl font-bold text-sky-800">Завдання наприкінці зміни</h2>
-                         <button id="resetEnd" class="px-3 py-1 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-md">Скинути</button>
+                         <button id="resetEnd" class="px-3 py-1 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-md">Скинути все</button>
                     </div>
-                    <p class="text-muted mb-4">Виконайте всі пункти для коректного завершення зміни, підготовки звітності та плавної передачі обов'язків наступному майстру.</p>
+                    <p class="text-muted mb-4 text-sm sm:text-base">Виконайте всі пункти для коректного завершення зміни, підготовки звітності та плавної передачі обов'язків наступному майстру.</p>
 
-                    <div class="space-y-3">
+                    <div class="space-y-4">
                         <div>
-                             <h3 class="font-bold text-lg mb-2">1. Завершення виробничих операцій</h3>
+                             <h3 class="font-bold text-lg mb-2 border-b pb-1 dark:border-slate-600">1. Завершення виробничих операцій</h3>
                              <ul class="space-y-2" data-section="end">
-                                <li id="end-1-1" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="end-1-2" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="end-1-3" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="end-1-4" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="end-1-5" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="end-1-1" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="end-1-2" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="end-1-3" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="end-1-4" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="end-1-5" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
                              </ul>
                         </div>
                         <div>
-                             <h3 class="font-bold text-lg mb-2">2. Підготовка до наступної зміни</h3>
+                             <h3 class="font-bold text-lg mb-2 border-b pb-1 dark:border-slate-600">2. Підготовка до наступної зміни</h3>
                              <ul class="space-y-2" data-section="end">
-                                <li id="end-2-1" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="end-2-2" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="end-2-1" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="end-2-2" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
                              </ul>
                         </div>
                          <div>
-                             <h3 class="font-bold text-lg mb-2">3. Звітність та передача зміни</h3>
+                             <h3 class="font-bold text-lg mb-2 border-b pb-1 dark:border-slate-600">3. Звітність та передача зміни</h3>
                              <ul class="space-y-2" data-section="end">
-                                <li id="end-3-1" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="end-3-2" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="end-3-3" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="end-3-4" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="end-3-5" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="end-3-1" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="end-3-2" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="end-3-3" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="end-3-4" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="end-3-5" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
                              </ul>
                         </div>
                         <div>
-                             <h3 class="font-bold text-lg mb-2">4. Завершальні перевірки та безпека</h3>
+                             <h3 class="font-bold text-lg mb-2 border-b pb-1 dark:border-slate-600">4. Завершальні перевірки та безпека</h3>
                              <ul class="space-y-2" data-section="end">
-                                <li id="end-4-1" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="end-4-2" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="end-4-3" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
-                                <li id="end-4-4" class="checklist-item priority-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li> </ul>
+                                <li id="end-4-1" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="end-4-2" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="end-4-3" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
+                                <li id="end-4-4" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li> 
+                             </ul>
                         </div>
                         <div>
-                             <h3 class="font-bold text-lg mb-2">5. Комунікація та підбиття підсумків</h3>
+                             <h3 class="font-bold text-lg mb-2 border-b pb-1 dark:border-slate-600">5. Комунікація та підбиття підсумків</h3>
                              <ul class="space-y-2" data-section="end">
-                                <li id="end-5-1" class="checklist-item flex-wrap p-3 rounded-lg cursor-pointer disabled-checklist-item"></li>
+                                <li id="end-5-1" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
                              </ul>
                         </div>
                     </div>
@@ -246,16 +267,16 @@
     </div>
 
     <div id="footerStatus" class="fixed bottom-0 left-0 right-0 card p-4 shadow-lg flex items-center justify-between z-40">
-        <div class="w-full">
+        <div class="w-full max-w-4xl mx-auto">
             <div class="w-full bg-gray-200 dark:bg-slate-600 rounded-full h-2.5 mb-2">
                 <div id="currentProgressBar" class="progress-bar-fill bg-emerald-600 h-2.5 rounded-full" style="width: 0%"></div>
             </div>
-            <p id="currentStatus" class="text-sm text-muted text-right">Залишилось завдань: 0</p>
+            <p id="currentStatus" class="text-sm text-muted text-right">Не відмічено завдань: 0</p>
         </div>
     </div>
 
-    <div id="completionModal" class="fixed inset-0 hidden items-center justify-center modal-overlay"></div>
-    <div id="commentModal" class="fixed inset-0 hidden items-center justify-center modal-overlay"></div>
+    <div id="completionModal" class="fixed inset-0 hidden items-center justify-center modal-overlay p-4"></div>
+    <div id="commentModal" class="fixed inset-0 hidden items-center justify-center modal-overlay p-4"></div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -267,29 +288,29 @@
                 'start-2-1': 'Перевірити санітарний стан виробничих приміщень (цехи варки, фасування).',
                 'start-2-2': 'Перевірити чистоту та справність основного і допоміжного обладнання.',
                 'start-2-3': 'Впевнитись, що інструменти та інвентар на своїх місцях і готові до роботи.',
-                'start-2-4': 'Перевірити цілісність предметів зі скла та крихких матеріалів (окуляри, вікна, скляні предмети) технологічного інвентарю та колючо-ріжучих предметів.', // NEW TASK ADDED
+                'start-2-4': 'Перевірити цілісність предметів зі скла та крихких матеріалів технологічного інвентарю та колючо-ріжучих предметів.',
                 'start-3-1': 'Провести надихаючу нараду по виробничим завданням і техніки безпеки.',
                 'start-3-2': 'Розподілити працівників по робочих місцях згідно з планом.',
                 'start-3-3': 'Перевірити наявність необхідної сировини та матеріалів на зміну.',
-                'start-3-4': 'Проконтролювати візуально якість готової продукції яка залишилась в цеху, виробленої попередньою зміною.',
+                'start-3-4': 'Проконтролювати візуально якість готової продукції яка залишилась в цеху.',
                 'start-4-1': 'Доповісти керівництву про початок виробничого процесу.',
                 'end-1-1': 'Переконатись у виконанні виробничого плану зміни.',
-                'end-1-2': 'Виписати і організувати передачу всіеї виробленої продукції на склад згідно процедур.',
+                'end-1-2': 'Виписати і організувати передачу всіеї виробленої продукції на склад.',
                 'end-1-3': 'Проконтролювати сортування та підготовку виробничих відходів до вивезення.',
                 'end-1-4': 'Забезпечити прибирання робочих місць персоналом та чистоту в цеху.',
-                'end-1-5': 'Переконатись, що залишки сировини та пакувальних матеріалів накриті та знаходяться на своїх місцях.',
+                'end-1-5': 'Переконатись, що залишки сировини та матеріалів накриті та на місцях.',
                 'end-2-1': 'Сформувати замовлення на сировину та матеріали для наступної зміни.',
                 'end-2-2': 'Перевірити, чи все обладнання вимкнене або переведене у безпечний режим.',
-                'end-3-1': 'Заповнити розділ коментарів  в  оперативному  плані результатами роботи (ключові події, проблеми, відхилення).',
+                'end-3-1': 'Заповнити розділ коментарів в оперативному плані результатами роботи.',
                 'end-3-2': 'Підготувати звіт про результати роботи (кількість, якість, брак, простої).',
-                'end-3-3': 'Задокументувати всі випадки браку або невідповідності продукції, скласти відповідні акти.',
+                'end-3-3': 'Задокументувати всі випадки браку або невідповідності продукції.',
                 'end-3-4': 'Підготувати звіт про санітарний стан на кінець зміни.',
-                'end-3-5': 'Письмово передати зміну наступному майстру, повідомивши про всі важливі аспекти.',
-                'end-4-1': 'Забезпечити встановлення Бактерицидних ламп на дільницях фасовки і варки (якщо нічної зміни не буде).',
-                'end-4-2': 'Виключити всі непотрібні прилади (КОНДИЦІОНЕРИ, вентилятори, монітори, комп\'ютери, освітлення і т.д.).',
-                'end-4-3': 'Перевірити розміщення виробничого і складського обладнання на відповідних місцях (електричні і гідравлічні візки, прибиральний інвентар, ящики з інструментом, та інше).',
-                'end-4-4': 'Перевірити цілісність предметів зі скла та крихких матеріалів (окуляри, вікна, скляні предмети) технологічного інвентарю та колючо-ріжучих предметів.', // NEW TASK ADDED
-                'end-5-1': 'Провести коротку нараду з командою для підбиття підсумків зміни індивідуальних  успіхів та обговорення проблемних моментів.',
+                'end-3-5': 'Письмово передати зміну наступному майстру.',
+                'end-4-1': 'Забезпечити встановлення Бактерицидних ламп на дільницях фасовки і варки.',
+                'end-4-2': 'Виключити всі непотрібні прилади (кондиціонери, вентилятори, освітлення).',
+                'end-4-3': 'Перевірити розміщення обладнання на відповідних місцях (візки, інвентар).',
+                'end-4-4': 'Перевірити цілісність предметів зі скла та крихких матеріалів.',
+                'end-5-1': 'Провести коротку нараду з командою для підбиття підсумків зміни.',
             };
 
             const contactsData = [
@@ -299,21 +320,27 @@
                 { name: 'Матвеєва Олена', phone: '050-334-02-67', tel: '+380503340267' },
             ];
             
-            // Populate checklist items
+            // Populate checklist items with YES/NO buttons
             Object.keys(checklistData).forEach(id => {
                 const itemEl = document.getElementById(id);
                 if(itemEl) {
                     itemEl.innerHTML = `
-                        <div class="flex items-center w-full">
-                            <span class="checkbox-icon w-6 h-6 mr-3 border-2 border-gray-300 dark:border-slate-500 rounded-md flex items-center justify-center text-lg font-bold"></span>
-                            <span class="task-text flex-1">${checklistData[id]}</span>
-                            <div class="actions ml-auto flex items-center">
-                                <button class="comment-btn p-1 rounded-full hover:bg-gray-200 dark:hover:bg-slate-600" title="Додати коментар">
+                        <div class="flex flex-col md:flex-row w-full md:items-center gap-3">
+                            <span class="task-text flex-1 font-medium">${checklistData[id]}</span>
+                            
+                            <div class="actions flex flex-wrap items-center gap-2 md:ml-auto">
+                                <button class="btn-complete px-3 py-1.5 text-sm font-semibold rounded-md border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-500 dark:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors">
+                                    ✓ Виконано
+                                </button>
+                                <button class="btn-fail px-3 py-1.5 text-sm font-semibold rounded-md border-2 border-red-500 text-red-600 hover:bg-red-50 dark:border-red-500 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors">
+                                    ✗ Не виконано
+                                </button>
+                                <button class="comment-btn p-2 rounded-full border-2 border-transparent hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors" title="Додати коментар">
                                     <svg class="h-5 w-5 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
                                 </button>
                             </div>
                         </div>
-                        <div class="comment-text mt-1 hidden w-full"></div>
+                        <div class="comment-text hidden w-full break-words"></div>
                     `;
                 }
             });
@@ -338,17 +365,17 @@
             document.getElementById('completionModal').innerHTML = `
                 <div class="card p-6 rounded-2xl shadow-xl max-w-sm w-full text-center modal-content">
                     <h3 id="modalMessage" class="text-xl font-bold mb-4"></h3>
-                    <button id="closeModalBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors">Закрити</button>
+                    <button id="closeModalBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors w-full sm:w-auto">Закрити</button>
                     <a id="sendReportLink" href="#" class="block mt-4 text-blue-600 hover:underline">Надіслати звіт на пошту</a>
                 </div>`;
 
             document.getElementById('commentModal').innerHTML = `
                 <div class="card p-6 rounded-2xl shadow-xl max-w-sm w-full text-center modal-content">
                     <h3 class="text-xl font-bold mb-4">Ваш коментар</h3>
-                    <textarea id="commentTextarea" class="w-full p-2 border rounded-lg card text-muted" rows="4"></textarea>
-                    <div class="mt-4 flex justify-end space-x-2">
-                         <button id="cancelCommentBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md transition-colors">Скасувати</button>
-                         <button id="saveCommentBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors">Зберегти</button>
+                    <textarea id="commentTextarea" class="w-full p-2 border rounded-lg card text-muted focus:outline-none focus:ring-2 focus:ring-emerald-500" rows="4"></textarea>
+                    <div class="mt-4 flex flex-col sm:flex-row justify-end gap-2">
+                         <button id="cancelCommentBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md transition-colors w-full sm:w-auto">Скасувати</button>
+                         <button id="saveCommentBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors w-full sm:w-auto">Зберегти</button>
                     </div>
                 </div>`;
             
@@ -356,9 +383,8 @@
             const allChecklistItems = document.querySelectorAll('.checklist-item');
             const employeeSelect = document.getElementById('employeeSelect');
             let appState = {};
-            const STORAGE_KEY = 'shiftChecklistState';
+            const STORAGE_KEY = 'shiftChecklistState_v2'; // Changed key due to data structure change
 
-            // --- State Management ---
             const saveState = () => {
                 const state = {
                     checklist: {},
@@ -366,8 +392,12 @@
                     theme: document.body.classList.contains('dark') ? 'dark' : 'light'
                 };
                 allChecklistItems.forEach(item => {
+                    let status = null;
+                    if (item.classList.contains('status-completed')) status = 'completed';
+                    if (item.classList.contains('status-failed')) status = 'failed';
+                    
                     state.checklist[item.id] = {
-                        completed: item.classList.contains('completed'),
+                        status: status,
                         comment: item.querySelector('.comment-text').textContent
                     };
                 });
@@ -384,7 +414,9 @@
                         allChecklistItems.forEach(item => {
                             const itemState = appState.checklist[item.id];
                             if (itemState) {
-                                if (itemState.completed) item.classList.add('completed');
+                                if (itemState.status === 'completed') item.classList.add('status-completed');
+                                if (itemState.status === 'failed') item.classList.add('status-failed');
+                                
                                 if (itemState.comment) {
                                     const commentEl = item.querySelector('.comment-text');
                                     commentEl.textContent = itemState.comment;
@@ -410,25 +442,51 @@
                 }
             };
             
-            // --- UI & Event Listeners ---
             const commentModal = document.getElementById('commentModal');
             const commentTextarea = document.getElementById('commentTextarea');
             let currentCommentItem = null;
 
             allChecklistItems.forEach(item => {
-                // Click on the item itself (toggle completed)
-                item.addEventListener('click', (event) => {
-                      if (employeeSelect.value && !event.target.closest('.actions')) {
-                        item.classList.toggle('completed');
-                        saveState();
-                        updateProgress();
-                    } else if (!employeeSelect.value) {
+                const btnComplete = item.querySelector('.btn-complete');
+                const btnFail = item.querySelector('.btn-fail');
+                const btnComment = item.querySelector('.comment-btn');
+
+                // Complete Button Logic
+                btnComplete.addEventListener('click', () => {
+                    if (!employeeSelect.value) {
                         document.getElementById('employeeSelectionHint').classList.remove('hidden');
+                        return;
                     }
+                    // Toggle if already selected, otherwise set to completed
+                    if (item.classList.contains('status-completed')) {
+                        item.classList.remove('status-completed');
+                    } else {
+                        item.classList.add('status-completed');
+                        item.classList.remove('status-failed');
+                    }
+                    saveState();
+                    updateProgress();
                 });
 
-                // Click on comment button
-                item.querySelector('.comment-btn').addEventListener('click', () => {
+                // Fail Button Logic
+                btnFail.addEventListener('click', () => {
+                    if (!employeeSelect.value) {
+                        document.getElementById('employeeSelectionHint').classList.remove('hidden');
+                        return;
+                    }
+                    // Toggle if already selected, otherwise set to failed
+                    if (item.classList.contains('status-failed')) {
+                        item.classList.remove('status-failed');
+                    } else {
+                        item.classList.add('status-failed');
+                        item.classList.remove('status-completed');
+                    }
+                    saveState();
+                    updateProgress();
+                });
+
+                // Comment Button Logic
+                btnComment.addEventListener('click', () => {
                     currentCommentItem = item;
                     commentTextarea.value = item.querySelector('.comment-text').textContent;
                     commentModal.style.display = 'flex';
@@ -470,10 +528,13 @@
 
                 items.forEach((item, index) => {
                     const taskText = item.querySelector('.task-text').textContent.trim();
-                    const isCompleted = item.classList.contains('completed') ? '✅ Виконано' : '❌ Не виконано';
                     const comment = item.querySelector('.comment-text').textContent.trim();
                     
-                    reportBody += `${index + 1}. ${taskText}\n   Статус: ${isCompleted}\n`;
+                    let statusText = '⚪ ПРОПУЩЕНО (немає відповіді)';
+                    if (item.classList.contains('status-completed')) statusText = '✅ Виконано';
+                    if (item.classList.contains('status-failed')) statusText = '❌ НЕ ВИКОНАНО';
+
+                    reportBody += `${index + 1}. ${taskText}\n   Статус: ${statusText}\n`;
                     if (comment) {
                         reportBody += `   Коментар: ${comment}\n`;
                     }
@@ -482,8 +543,6 @@
 
                 const emailSubject = encodeURIComponent(`Звіт Майстра: ${sectionTitle} - ${employeeSelect.value}`);
                 const emailBody = encodeURIComponent(reportBody);
-                
-                // --- EDITED LINE BELOW ---
                 const recipients = 'Buznitskiy7@gmail.com,Dyndarnastia@gmail.com,olgagoncharukm@gmail.com,sashaalieva18@gmail.com'; 
 
                 window.location.href = `mailto:${recipients}?subject=${emailSubject}&body=${emailBody}`;
@@ -508,7 +567,7 @@
                 };
             };
             
-            // Other event listeners (navigation, reset, etc.)
+            // Other event listeners
             const startShiftBtn = document.getElementById('startShiftBtn');
             const endShiftBtn = document.getElementById('endShiftBtn');
             const contactsBtn = document.getElementById('contactsBtnHeader');
@@ -523,7 +582,6 @@
             const themeToggle = document.getElementById('themeToggle');
             const printBtn = document.getElementById('printBtn');
             const employeeSelectionHint = document.getElementById('employeeSelectionHint');
-            
             const closeModalBtn = document.getElementById('closeModalBtn');
             
             let currentSection = 'start';
@@ -563,40 +621,49 @@
 
             const updateProgress = () => {
                 if (currentSection === 'contacts') return;
+                
                 const items = document.querySelectorAll(`#${currentSection}ShiftSection .checklist-item`);
-                const completedItems = document.querySelectorAll(`#${currentSection}ShiftSection .checklist-item.completed`).length;
+                // Progress counts as "done" if the user clicked EITHER "Completed" OR "Failed"
+                const addressedItems = document.querySelectorAll(`#${currentSection}ShiftSection .checklist-item.status-completed, #${currentSection}ShiftSection .checklist-item.status-failed`).length;
+                
                 const total = items.length;
-                const percentage = total > 0 ? (completedItems / total) * 100 : 0;
+                const percentage = total > 0 ? (addressedItems / total) * 100 : 0;
                 
                 currentProgressBar.style.width = `${percentage}%`;
-                if(total > 0 && completedItems === total) {
-                      currentStatus.textContent = 'Чудова робота! Всі завдання виконано.';
+                
+                if(total > 0 && addressedItems === total) {
+                      currentStatus.textContent = 'Всі завдання перевірено!';
+                      // Automatically show modal only if we just hit 100%
                       showCompletionModal(currentSection);
                 } else {
-                      currentStatus.textContent = `Залишилось завдань: ${total - completedItems}`;
+                      currentStatus.textContent = `Залишилось невідмічених: ${total - addressedItems}`;
                 }
             };
             
             resetStartBtn.addEventListener('click', () => {
-                 document.querySelectorAll('#startShiftSection .checklist-item').forEach(item => {
-                    item.classList.remove('completed');
-                    const commentEl = item.querySelector('.comment-text');
-                    commentEl.textContent = '';
-                    commentEl.classList.add('hidden');
-                 });
-                 saveState();
-                 updateProgress();
+                 if(confirm('Ви впевнені, що хочете скинути всі відмітки початку зміни?')) {
+                     document.querySelectorAll('#startShiftSection .checklist-item').forEach(item => {
+                        item.classList.remove('status-completed', 'status-failed');
+                        const commentEl = item.querySelector('.comment-text');
+                        commentEl.textContent = '';
+                        commentEl.classList.add('hidden');
+                     });
+                     saveState();
+                     updateProgress();
+                 }
             });
 
             resetEndBtn.addEventListener('click', () => {
-                document.querySelectorAll('#endShiftSection .checklist-item').forEach(item => {
-                    item.classList.remove('completed');
-                    const commentEl = item.querySelector('.comment-text');
-                    commentEl.textContent = '';
-                    commentEl.classList.add('hidden');
-                });
-                saveState();
-                updateProgress();
+                 if(confirm('Ви впевнені, що хочете скинути всі відмітки кінця зміни?')) {
+                    document.querySelectorAll('#endShiftSection .checklist-item').forEach(item => {
+                        item.classList.remove('status-completed', 'status-failed');
+                        const commentEl = item.querySelector('.comment-text');
+                        commentEl.textContent = '';
+                        commentEl.classList.add('hidden');
+                    });
+                    saveState();
+                    updateProgress();
+                 }
             });
 
             themeToggle.addEventListener('click', () => {
@@ -605,7 +672,6 @@
             });
             
             printBtn.addEventListener('click', () => window.print());
-
             startShiftBtn.addEventListener('click', () => switchView('start'));
             endShiftBtn.addEventListener('click', () => switchView('end'));
             contactsBtn.addEventListener('click', () => switchView('contacts'));
@@ -632,7 +698,5 @@
             }
         });
     </script>
-
 </body>
-
 </html>
