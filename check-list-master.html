@@ -4,314 +4,466 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Інтерактивний чек-лист: Майстер зміни</title>
+    
+    <link rel="manifest" id="manifest-link">
+    <meta name="theme-color" content="#10b981">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Чек-лист Майстра">
+    <link rel="apple-touch-icon" href="https://foodline-production.com/wp-content/uploads/2021/10/3752781497_3752781497.webp">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Base Variables for Theming */
         :root {
-            --bg-color: #f8fafc; /* slate-50 */
+            --bg-color: #f8fafc;
             --card-bg-color: #ffffff;
-            --text-color: #1e293b; /* slate-800 */
-            --text-muted-color: #64748b; /* slate-500 */
-            --item-bg-color: #f1f5f9; /* slate-100 */
-            --item-hover-bg-color: #e2e8f0; /* slate-200 */
+            --text-color: #1e293b;
+            --text-muted-color: #64748b;
+            --item-bg-color: #f1f5f9;
+            --item-hover-bg-color: #e2e8f0;
             --border-color: #e2e8f0;
-            --priority-border-color: #fecaca; /* red-200 */
-            --header-icon-hover-bg: #e5e7eb; /* gray-200 */
+            --active-btn-bg: #10b981;
+            --active-btn-text: #ffffff;
+            --error-btn-bg: #ef4444;
         }
 
         .dark {
-            --bg-color: #1e293b; /* slate-800 */
-            --card-bg-color: #334155; /* slate-700 */
-            --text-color: #f1f5f9; /* slate-100 */
-            --text-muted-color: #94a3b8; /* slate-400 */
-            --item-bg-color: #475569; /* slate-600 */
-            --item-hover-bg-color: #64748b; /* slate-500 */
+            --bg-color: #1e293b;
+            --card-bg-color: #334155;
+            --text-color: #f1f5f9;
+            --text-muted-color: #94a3b8;
+            --item-bg-color: #475569;
+            --item-hover-bg-color: #64748b;
             --border-color: #475569;
-            --priority-border-color: #991b1b; /* red-800 */
-            --header-icon-hover-bg: #475569; /* slate-600 */
         }
 
         body {
             background-color: var(--bg-color);
             color: var(--text-color);
             -webkit-tap-highlight-color: transparent;
-            padding-bottom: 6rem; /* Space for fixed footer */
+            padding-bottom: 6rem;
             transition: background-color 0.3s ease, color 0.3s ease;
         }
         
-        /* General Component Styling */
         .card { background-color: var(--card-bg-color); }
         .text-muted { color: var(--text-muted-color); }
-        .header-icon:hover { background-color: var(--header-icon-hover-bg); }
 
         .checklist-item {
             background-color: var(--item-bg-color);
             border: 1px solid var(--border-color);
-            transition: background-color 0.3s ease, color 0.3s ease;
+            transition: all 0.2s ease;
         }
         
-        /* New Status Styles */
-        .checklist-item.status-completed {
+        .checklist-item.completed {
             background-color: var(--item-hover-bg-color);
+            border-left: 4px solid var(--active-btn-bg);
         }
-        .checklist-item.status-completed .task-text { 
-            color: var(--text-muted-color); 
-        }
-        .checklist-item.status-completed .btn-complete {
-            background-color: #10b981; /* emerald-500 */
-            color: white;
-            border-color: #10b981;
-        }
-
-        .checklist-item.status-failed {
-            background-color: #fef2f2; /* red-50 */
-            border-color: #fca5a5; /* red-300 */
-        }
-        .dark .checklist-item.status-failed {
-            background-color: #450a0a; /* red-950 */
-            border-color: #7f1d1d; /* red-900 */
-        }
-        .checklist-item.status-failed .btn-fail {
-            background-color: #ef4444; /* red-500 */
-            color: white;
-            border-color: #ef4444;
-        }
-        
-        .priority-item { border: 1px solid var(--priority-border-color); }
         
         .nav-button.active { background-color: #059669; color: white; border-color: #059669; }
         .progress-bar-fill { transition: width 0.5s ease-in-out; }
-
         .modal-overlay { background-color: rgba(0, 0, 0, 0.6); z-index: 1000; }
         .modal-content { z-index: 1001; }
-        .disabled-checklist-item { pointer-events: none; opacity: 0.5; cursor: not-allowed; }
-        .comment-text { font-size: 0.875rem; color: var(--text-muted-color); margin-top: 0.5rem; border-left: 2px solid #cbd5e1; padding-left: 0.5rem; }
-        .dark .comment-text { border-left-color: #475569; }
+        
+        /* Custom Input Styles */
+        .option-btn {
+            background-color: transparent;
+            border: 1px solid var(--text-muted-color);
+            color: var(--text-muted-color);
+            transition: all 0.2s;
+        }
+        .option-btn:hover { background-color: rgba(0,0,0,0.05); }
+        .option-btn.selected-good {
+            background-color: var(--active-btn-bg);
+            color: white;
+            border-color: var(--active-btn-bg);
+        }
+        .option-btn.selected-bad {
+            background-color: var(--error-btn-bg);
+            color: white;
+            border-color: var(--error-btn-bg);
+        }
+        .option-btn.selected-neutral {
+            background-color: var(--text-muted-color);
+            color: white;
+            border-color: var(--text-muted-color);
+        }
+        
+        input[type="number"], input[type="text"] {
+            background-color: var(--card-bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
 
-        /* Print Styles */
+        /* Photo Styles */
+        .photo-btn.has-photo {
+            color: #10b981;
+            border-color: #10b981;
+            background-color: rgba(16, 185, 129, 0.1);
+        }
+        .photo-thumbnail {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            display: none;
+        }
+        .photo-thumbnail.show { display: block; }
+        
+        /* Comment Button Active Style */
+        .comment-btn.has-comment {
+            color: #10b981;
+            border-color: #10b981;
+            background-color: rgba(16, 185, 129, 0.1);
+        }
+
+        /* Network Status Indicator */
+        .network-status {
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255,255,255,0.8);
+            padding: 2px 8px;
+            border-radius: 12px;
+            backdrop-filter: blur(2px);
+            margin-top: 0.5rem;
+            margin-left: auto;
+            width: fit-content;
+        }
+        .dark .network-status { background: rgba(0,0,0,0.3); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; }
+        .status-dot.online { background: #10b981; }
+        .status-dot.offline { background: #ef4444; }
+        .status-dot.syncing { background: #f59e0b; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
         @media print {
             body { padding-bottom: 0; }
-            header, .mb-6.bg-white, nav, #footerStatus, .modal-overlay, .actions, button, a[href^="tel"] {
+            header, .mb-6.bg-white, nav, #footerStatus, .modal-overlay, .actions, button, a[href^="tel"], .controls-area, .photo-controls, #mainSubmitSection, .network-status {
                 display: none !important;
             }
-            main, section, .card {
-                display: block !important;
-                box-shadow: none !important;
-                border: none !important;
-            }
-            .checklist-item { page-break-inside: avoid; }
+            .print-value { display: block !important; }
+            main, section, .card { display: block !important; box-shadow: none !important; border: none !important; }
         }
+        .print-value { display: none; font-weight: bold; }
+        
+        /* Table in modal */
+        .preview-table td, .preview-table th {
+            text-align: left;
+            padding: 0.5rem;
+            border-bottom: 1px solid #eee;
+            color: #1e293b;
+        }
+        .dark .preview-table td, .dark .preview-table th { border-color: #444; }
+        
+        /* Error Highlight Styles */
+        @keyframes errorPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); border-color: #ef4444; }
+            50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); border-color: #fca5a5; }
+        }
+        .error-highlight {
+            animation: errorPulse 1.5s infinite;
+            border: 2px solid #ef4444 !important;
+            background-color: #fef2f2 !important;
+            transition: background-color 0.3s ease;
+        }
+        .dark .error-highlight { background-color: rgba(239, 68, 68, 0.15) !important; }
     </style>
 </head>
 <body class="bg-slate-50 font-sans">
 
-    <div class="container mx-auto max-w-4xl p-4 sm:p-6 lg:p-8">
-        
+    <script>
+        const manifest = {
+            "name": "Чек-лист Майстра",
+            "short_name": "Чек-лист Майстра",
+            "description": "Інтерактивний чек-лист для майстра зміни",
+            "start_url": ".",
+            "display": "standalone",
+            "background_color": "#f8fafc",
+            "theme_color": "#10b981",
+            "icons": [
+                {
+                    "src": "https://foodline-production.com/wp-content/uploads/2021/10/3752781497_3752781497.webp", 
+                    "sizes": "192x192", 
+                    "type": "image/webp"
+                }
+            ]
+        };
+        document.getElementById('manifest-link').href = 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifest));
+    </script>
+
+    <div class="container mx-auto max-w-3xl p-4 sm:p-6 lg:p-8 relative">
         <header class="relative text-center mb-6">
              <div class="absolute top-0 left-0 text-center">
-                <a href="index.html" class="inline-block p-2 rounded-full text-muted header-icon transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" title="На головну">
+                <button onclick="location.reload()" class="inline-block p-2 rounded-full text-muted header-icon transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" title="Оновити сторінку">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
-                </a>
-                <div id="current-date" class="text-muted text-xs mt-1"></div>
+                </button>
+                <div id="current-date" class="text-muted text-xs mt-1 font-semibold"></div>
             </div>
 
-            <img src="https://foodline-production.com/wp-content/uploads/2021/10/3752781497_3752781497.webp" alt="Foodline Production Logo" class="w-24 h-auto mx-auto mb-4 rounded-lg">
-            <h1 class="text-2xl sm:text-3xl font-bold">Чек-лист Майстра зміни</h1>
-            <p class="text-muted">Контрольні точки для організації роботи</p>
-
-            <div class="absolute top-0 right-0 flex space-x-2">
-                 <button id="printBtn" class="p-2 rounded-full text-muted header-icon transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" title="Друк / Зберегти в PDF">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                </button>
-                 <button id="themeToggle" class="p-2 rounded-full text-muted header-icon transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" title="Темна/Світла тема">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
-                </button>
-                <button id="contactsBtnHeader" class="p-2 rounded-full text-muted header-icon transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" title="Контакти">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M12 14a4 4 0 100-8 4 4 0 000 8z" /></svg>
-                </button>
+            <div class="absolute top-0 right-0 flex flex-col items-end">
+                <div class="flex space-x-2">
+                     <button id="printBtn" class="p-2 rounded-full text-muted header-icon transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" title="Друк / Зберегти в PDF">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                    </button>
+                     <button id="themeToggle" class="p-2 rounded-full text-muted header-icon transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" title="Темна/Світла тема">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                    </button>
+                    <button id="contactsBtnHeader" class="p-2 rounded-full text-muted header-icon transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" title="Контакти">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M12 14a4 4 0 100-8 4 4 0 000 8z" /></svg>
+                    </button>
+                </div>
+                
+                <div class="network-status shadow-sm border border-gray-200 dark:border-gray-700 cursor-pointer" id="networkStatusBtn" title="Натисніть для синхронізації">
+                    <span class="status-dot online" id="statusDot"></span>
+                    <span id="statusText">Онлайн</span>
+                </div>
             </div>
         </header>
+
+        <img src="https://foodline-production.com/wp-content/uploads/2021/10/3752781497_3752781497.webp" alt="Foodline Production Logo" class="w-24 h-auto mx-auto mb-4 rounded-lg">
+
+        <div class="text-center mb-6">
+            <h1 class="text-2xl sm:text-3xl font-bold">Чек-лист Майстра зміни</h1>
+            <p class="text-muted">Контрольні точки для організації роботи</p>
+        </div>
 
         <div class="mb-6 card p-4 rounded-xl shadow-sm">
             <label for="employeeSelect" class="block text-sm font-bold mb-2">Прізвище та ім'я Майстра:</label>
             <select id="employeeSelect" class="block w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 card text-muted">
                 <option value="">Оберіть зі списку</option>
             </select>
-            <p id="employeeSelectionHint" class="text-red-500 text-xs mt-2 hidden">Будь ласка, оберіть своє ім'я, щоб розпочати роботу з чек-листом.</p>
         </div>
 
-        <nav class="flex justify-center items-center mb-6 card p-2 rounded-xl shadow-sm">
-            <button id="startShiftBtn" class="nav-button active w-1/2 text-center py-2 px-4 rounded-lg font-semibold border border-gray-300 dark:border-slate-600 focus:outline-none transition-all duration-300">Початок зміни</button>
-            <button id="endShiftBtn" class="nav-button w-1/2 text-center py-2 px-4 rounded-lg font-semibold border border-gray-300 dark:border-slate-600 focus:outline-none transition-all duration-300">Кінець зміни</button>
+        <nav class="flex justify-center items-center mb-6 card p-2 rounded-xl shadow-sm gap-2">
+            <button id="startShiftBtn" class="nav-button active w-1/2 text-center py-2 px-2 rounded-lg font-semibold border border-gray-300 dark:border-slate-600 focus:outline-none transition-all duration-300 flex flex-col items-center justify-center">
+                <span class="leading-tight">Початок зміни</span>
+            </button>
+            <button id="endShiftBtn" class="nav-button w-1/2 text-center py-2 px-2 rounded-lg font-semibold border border-gray-300 dark:border-slate-600 focus:outline-none transition-all duration-300 flex flex-col items-center justify-center">
+                <span class="leading-tight">Кінець зміни</span>
+            </button>
         </nav>
 
-        <main>
-            <section id="startShiftSection">
-                <div class="card p-4 sm:p-6 rounded-2xl shadow-md">
-                    <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
-                         <h2 class="text-xl sm:text-2xl font-bold text-emerald-800">Завдання на початку зміни</h2>
-                         <button id="resetStart" class="px-3 py-1 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-md">Скинути все</button>
-                    </div>
-                    <p class="text-muted mb-4 text-sm sm:text-base">Перевірте всі пункти для успішного старту робочої зміни, забезпечення безперебійного процесу та дотримання стандартів якості й безпеки.</p>
-                    
-                    <div class="space-y-4">
-                        <div>
-                            <h3 class="font-bold text-lg mb-2 border-b pb-1 dark:border-slate-600">1. Прийом зміни та перевірка персоналу</h3>
-                            <ul class="space-y-2" data-section="start">
-                                <li id="start-1-1" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="start-1-2" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="start-1-3" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="start-1-4" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-lg mb-2 border-b pb-1 dark:border-slate-600">2. Контроль санітарного стану та обладнання</h3>
-                            <ul class="space-y-2" data-section="start">
-                                <li id="start-2-1" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="start-2-2" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="start-2-3" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="start-2-4" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li> 
-                            </ul>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-lg mb-2 border-b pb-1 dark:border-slate-600">3. Організація виробничого процесу</h3>
-                            <ul class="space-y-2" data-section="start">
-                                <li id="start-3-1" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="start-3-2" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="start-3-3" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="start-3-4" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-lg mb-2 border-b pb-1 dark:border-slate-600">4. Звітність</h3>
-                            <ul class="space-y-2" data-section="start">
-                                <li id="start-4-1" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section id="endShiftSection" class="hidden">
-                 <div class="card p-4 sm:p-6 rounded-2xl shadow-md">
-                    <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
-                         <h2 class="text-xl sm:text-2xl font-bold text-sky-800">Завдання наприкінці зміни</h2>
-                         <button id="resetEnd" class="px-3 py-1 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-md">Скинути все</button>
-                    </div>
-                    <p class="text-muted mb-4 text-sm sm:text-base">Виконайте всі пункти для коректного завершення зміни, підготовки звітності та плавної передачі обов'язків наступному майстру.</p>
-
-                    <div class="space-y-4">
-                        <div>
-                             <h3 class="font-bold text-lg mb-2 border-b pb-1 dark:border-slate-600">1. Завершення виробничих операцій</h3>
-                             <ul class="space-y-2" data-section="end">
-                                <li id="end-1-1" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="end-1-2" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="end-1-3" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="end-1-4" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="end-1-5" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                             </ul>
-                        </div>
-                        <div>
-                             <h3 class="font-bold text-lg mb-2 border-b pb-1 dark:border-slate-600">2. Підготовка до наступної зміни</h3>
-                             <ul class="space-y-2" data-section="end">
-                                <li id="end-2-1" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="end-2-2" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                             </ul>
-                        </div>
-                         <div>
-                             <h3 class="font-bold text-lg mb-2 border-b pb-1 dark:border-slate-600">3. Звітність та передача зміни</h3>
-                             <ul class="space-y-2" data-section="end">
-                                <li id="end-3-1" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="end-3-2" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="end-3-3" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="end-3-4" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="end-3-5" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                             </ul>
-                        </div>
-                        <div>
-                             <h3 class="font-bold text-lg mb-2 border-b pb-1 dark:border-slate-600">4. Завершальні перевірки та безпека</h3>
-                             <ul class="space-y-2" data-section="end">
-                                <li id="end-4-1" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="end-4-2" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="end-4-3" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                                <li id="end-4-4" class="checklist-item priority-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li> 
-                             </ul>
-                        </div>
-                        <div>
-                             <h3 class="font-bold text-lg mb-2 border-b pb-1 dark:border-slate-600">5. Комунікація та підбиття підсумків</h3>
-                             <ul class="space-y-2" data-section="end">
-                                <li id="end-5-1" class="checklist-item flex flex-col p-3 rounded-lg disabled-checklist-item"></li>
-                             </ul>
-                        </div>
-                    </div>
-                </div>
-            </section>
-            
-            <section id="contactsSection" class="hidden">
-                 <div class="card p-4 sm:p-6 rounded-2xl shadow-md">
-                    <h2 class="text-xl sm:text-2xl font-bold mb-4">Контакти для оперативного зв'язку</h2>
-                    <div class="space-y-4">
-                        <div class="bg-red-50 dark:bg-red-900/30 border-2 border-red-200 dark:border-red-800 p-4 rounded-lg flex items-center justify-between">
-                            <div>
-                                <p class="font-bold">Екстрені служби</p>
-                                <p class="text-red-600 dark:text-red-400">112</p>
-                            </div>
-                            <a href="tel:112" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors">
-                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
-                            </a>
-                        </div>
-                    </div>
-                 </div>
-            </section>
+        <main id="checklistContainer">
         </main>
+        
+        <section id="contactsSection" class="hidden">
+             <div class="card p-4 sm:p-6 rounded-2xl shadow-md">
+                <h2 class="text-xl sm:text-2xl font-bold mb-4">Контакти для оперативного зв'язку</h2>
+                <div class="space-y-4 contact-list">
+                </div>
+             </div>
+        </section>
     </div>
 
-    <div id="footerStatus" class="fixed bottom-0 left-0 right-0 card p-4 shadow-lg flex items-center justify-between z-40">
-        <div class="w-full max-w-4xl mx-auto">
+    <div id="footerStatus" class="fixed bottom-0 left-0 right-0 card p-4 shadow-lg flex items-center justify-between z-40 cursor-pointer">
+        <div class="w-full">
             <div class="w-full bg-gray-200 dark:bg-slate-600 rounded-full h-2.5 mb-2">
                 <div id="currentProgressBar" class="progress-bar-fill bg-emerald-600 h-2.5 rounded-full" style="width: 0%"></div>
             </div>
-            <p id="currentStatus" class="text-sm text-muted text-right">Не відмічено завдань: 0</p>
+            <p id="currentStatus" class="text-sm text-muted text-right">Залишилось завдань: 0</p>
         </div>
     </div>
 
-    <div id="completionModal" class="fixed inset-0 hidden items-center justify-center modal-overlay p-4"></div>
-    <div id="commentModal" class="fixed inset-0 hidden items-center justify-center modal-overlay p-4"></div>
+    <div id="completionModal" class="fixed inset-0 hidden items-center justify-center modal-overlay p-4 z-[1500]"></div>
+    <div id="commentModal" class="fixed inset-0 hidden items-center justify-center modal-overlay p-4 z-[1500]"></div>
+    
+    <div id="customDialogOverlay" class="fixed inset-0 hidden items-center justify-center modal-overlay z-[2000] p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center transform transition-all">
+            <h3 id="customDialogMessage" class="text-lg font-bold mb-6 text-slate-800 dark:text-white whitespace-pre-wrap"></h3>
+            <div class="flex justify-center gap-3" id="customDialogButtons">
+            </div>
+        </div>
+    </div>
+
+    <canvas id="compressionCanvas" class="hidden"></canvas>
 
     <script>
+        // Вставлено ваше посилання на розгорнутий Google Apps Script:
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwOMNWaz8WdYPw9ljD76KPay4kxjsPuxIOQMKNJPud0UwkdtcBlfnbmnV4o4CsUnIVlxA/exec'; 
+        
+        // Структура Майстра
+        const checklistConfig = [
+            // --- ПОЧАТОК ЗМІНИ ---
+            {
+                id: 'start-1',
+                title: '1. Прийом зміни та перевірка персоналу',
+                items: [
+                    { id: 's1-1', text: 'Ознайомитись з записами і результатами від попереднього майстра зміни.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'start' },
+                    { id: 's1-2', text: 'Ознайомитись з виробничим планом на зміну.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'start' },
+                    { id: 's1-3', text: 'Перевірити присутність та візуально оцінити стан здоров\'я працівників.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'start' },
+                    { id: 's1-4', text: 'Перевірити дотримання працівниками гігієни та належного стану одягу.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'start' }
+                ]
+            },
+            {
+                id: 'start-2',
+                title: '2. Контроль санітарного стану та обладнання',
+                items: [
+                    { id: 's2-1', text: 'Перевірити санітарний стан виробничих приміщень (цехи варки, фасування).', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'start' },
+                    { id: 's2-2', text: 'Перевірити чистоту та справність основного і допоміжного обладнання.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'start' },
+                    { id: 's2-3', text: 'Впевнитись, що інструменти та інвентар на своїх місцях і готові до роботи.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'start' },
+                    { id: 's2-4', text: 'Перевірити цілісність предметів зі скла та крихких матеріалів технологічного інвентарю та колючо-ріжучих предметів.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'start' }
+                ]
+            },
+            {
+                id: 'start-3',
+                title: '3. Організація виробничого процесу',
+                items: [
+                    { id: 's3-1', text: 'Провести надихаючу нараду по виробничим завданням і техніки безпеки.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'start' },
+                    { id: 's3-2', text: 'Розподілити працівників по робочих місцях згідно з планом.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'start' },
+                    { id: 's3-3', text: 'Перевірити наявність необхідної сировини та матеріалів на зміну.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'start' },
+                    { id: 's3-4', text: 'Проконтролювати візуально якість готової продукції яка залишилась в цеху.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'start' }
+                ]
+            },
+            {
+                id: 'start-4',
+                title: '4. Звітність',
+                items: [
+                    { id: 's4-1', text: 'Доповісти керівництву про початок виробничого процесу.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'start' }
+                ]
+            },
+            // --- КІНЕЦЬ ЗМІНИ ---
+            {
+                id: 'end-1',
+                title: '1. Завершення виробничих операцій',
+                items: [
+                    { id: 'e1-1', text: 'Переконатись у виконанні виробничого плану зміни.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'end' },
+                    { id: 'e1-2', text: 'Виписати і організувати передачу всіеї виробленої продукції на склад.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'end' },
+                    { id: 'e1-3', text: 'Проконтролювати сортування та підготовку виробничих відходів до вивезення.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'end' },
+                    { id: 'e1-4', text: 'Забезпечити прибирання робочих місць персоналом та чистоту в цеху.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'end' },
+                    { id: 'e1-5', text: 'Переконатись, що залишки сировини та матеріалів накриті та на місцях.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'end' }
+                ]
+            },
+            {
+                id: 'end-2',
+                title: '2. Підготовка до наступної зміни',
+                items: [
+                    { id: 'e2-1', text: 'Сформувати замовлення на сировину та матеріали для наступної зміни.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'end' },
+                    { id: 'e2-2', text: 'Перевірити, чи все обладнання вимкнене або переведене у безпечний режим.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'end' }
+                ]
+            },
+            {
+                id: 'end-3',
+                title: '3. Звітність та передача зміни',
+                items: [
+                    { id: 'e3-1', text: 'Заповнити розділ коментарів в оперативному плані результатами роботи.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'end' },
+                    { id: 'e3-2', text: 'Підготувати звіт про результати роботи (кількість, якість, брак, простої).', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'end' },
+                    { id: 'e3-3', text: 'Задокументувати всі випадки браку або невідповідності продукції.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'end' },
+                    { id: 'e3-4', text: 'Підготувати звіт про санітарний стан на кінець зміни.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'end' },
+                    { id: 'e3-5', text: 'Письмово передати зміну наступному майстру.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'end' }
+                ]
+            },
+            {
+                id: 'end-4',
+                title: '4. Завершальні перевірки та безпека',
+                items: [
+                    { id: 'e4-1', text: 'Забезпечити встановлення Бактерицидних ламп на дільницях фасовки і варки.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'end' },
+                    { id: 'e4-2', text: 'Виключити всі непотрібні прилади (кондиціонери, вентилятори, освітлення).', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'end' },
+                    { id: 'e4-3', text: 'Перевірити розміщення обладнання на відповідних місцях (візки, інвентар).', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'end' },
+                    { id: 'e4-4', text: 'Перевірити цілісність предметів зі скла та крихких матеріалів.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'end' }
+                ]
+            },
+            {
+                id: 'end-5',
+                title: '5. Комунікація та підбиття підсумків',
+                items: [
+                    { id: 'e5-1', text: 'Провести коротку нараду з командою для підбиття підсумків зміни.', type: 'binary', options: ['Виконано', 'Не виконано'], visibleOn: 'end' }
+                ]
+            }
+        ];
+
+        // --- Custom Dialog System ---
+        const showCustomDialog = (options) => {
+            return new Promise((resolve) => {
+                const overlay = document.getElementById('customDialogOverlay');
+                const msgEl = document.getElementById('customDialogMessage');
+                const btnsEl = document.getElementById('customDialogButtons');
+
+                let msg = typeof options === 'string' ? options : options.message;
+                let isConfirm = options.isConfirm || false;
+                let isHtml = options.html || false;
+                let okText = options.okText || (isConfirm ? 'Підтвердити' : 'Зрозуміло');
+
+                if (isHtml) {
+                    msgEl.innerHTML = msg;
+                    msgEl.classList.remove('whitespace-pre-wrap'); 
+                } else {
+                    msgEl.textContent = msg;
+                    msgEl.classList.add('whitespace-pre-wrap');
+                }
+                
+                btnsEl.innerHTML = '';
+
+                const closeDialog = () => {
+                    overlay.classList.add('hidden');
+                    overlay.classList.remove('flex');
+                };
+
+                if (isConfirm) {
+                    const btnCancel = document.createElement('button');
+                    btnCancel.className = 'px-4 py-2 bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-white rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors';
+                    btnCancel.textContent = 'Скасувати';
+                    btnCancel.onclick = () => { closeDialog(); resolve(false); };
+
+                    const btnOk = document.createElement('button');
+                    btnOk.className = 'px-4 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors shadow-md';
+                    btnOk.textContent = okText;
+                    btnOk.onclick = () => { closeDialog(); resolve(true); };
+
+                    btnsEl.appendChild(btnCancel);
+                    btnsEl.appendChild(btnOk);
+                } else {
+                    const btnOk = document.createElement('button');
+                    btnOk.className = 'px-6 py-2 bg-emerald-500 text-white rounded-lg font-semibold hover:bg-emerald-600 transition-colors shadow-md';
+                    btnOk.textContent = okText;
+                    btnOk.onclick = () => { closeDialog(); resolve(true); };
+                    btnsEl.appendChild(btnOk);
+                }
+
+                overlay.classList.remove('hidden');
+                overlay.classList.add('flex');
+            });
+        };
+
+        const customAlert = (msg) => showCustomDialog({ message: msg });
+        const customConfirm = (msg) => showCustomDialog({ message: msg, isConfirm: true });
+
+        // --- Clock Update ---
+        const updateClock = () => {
+            const dateEl = document.getElementById('current-date');
+            if(dateEl) {
+                const now = new Date();
+                dateEl.textContent = now.toLocaleDateString('uk-UA') + ' ' + now.toLocaleTimeString('uk-UA', {hour: '2-digit', minute:'2-digit'});
+            }
+        };
+
         document.addEventListener('DOMContentLoaded', () => {
-            const checklistData = {
-                'start-1-1': 'Ознайомитись з записами і результатами від попереднього майстра зміни.',
-                'start-1-2': 'Ознайомитись з виробничим планом на зміну.',
-                'start-1-3': 'Перевірити присутність та візуально оцінити стан здоров\'я працівників.',
-                'start-1-4': 'Перевірити дотримання працівниками гігієни та належного стану одягу.',
-                'start-2-1': 'Перевірити санітарний стан виробничих приміщень (цехи варки, фасування).',
-                'start-2-2': 'Перевірити чистоту та справність основного і допоміжного обладнання.',
-                'start-2-3': 'Впевнитись, що інструменти та інвентар на своїх місцях і готові до роботи.',
-                'start-2-4': 'Перевірити цілісність предметів зі скла та крихких матеріалів технологічного інвентарю та колючо-ріжучих предметів.',
-                'start-3-1': 'Провести надихаючу нараду по виробничим завданням і техніки безпеки.',
-                'start-3-2': 'Розподілити працівників по робочих місцях згідно з планом.',
-                'start-3-3': 'Перевірити наявність необхідної сировини та матеріалів на зміну.',
-                'start-3-4': 'Проконтролювати візуально якість готової продукції яка залишилась в цеху.',
-                'start-4-1': 'Доповісти керівництву про початок виробничого процесу.',
-                'end-1-1': 'Переконатись у виконанні виробничого плану зміни.',
-                'end-1-2': 'Виписати і організувати передачу всіеї виробленої продукції на склад.',
-                'end-1-3': 'Проконтролювати сортування та підготовку виробничих відходів до вивезення.',
-                'end-1-4': 'Забезпечити прибирання робочих місць персоналом та чистоту в цеху.',
-                'end-1-5': 'Переконатись, що залишки сировини та матеріалів накриті та на місцях.',
-                'end-2-1': 'Сформувати замовлення на сировину та матеріали для наступної зміни.',
-                'end-2-2': 'Перевірити, чи все обладнання вимкнене або переведене у безпечний режим.',
-                'end-3-1': 'Заповнити розділ коментарів в оперативному плані результатами роботи.',
-                'end-3-2': 'Підготувати звіт про результати роботи (кількість, якість, брак, простої).',
-                'end-3-3': 'Задокументувати всі випадки браку або невідповідності продукції.',
-                'end-3-4': 'Підготувати звіт про санітарний стан на кінець зміни.',
-                'end-3-5': 'Письмово передати зміну наступному майстру.',
-                'end-4-1': 'Забезпечити встановлення Бактерицидних ламп на дільницях фасовки і варки.',
-                'end-4-2': 'Виключити всі непотрібні прилади (кондиціонери, вентилятори, освітлення).',
-                'end-4-3': 'Перевірити розміщення обладнання на відповідних місцях (візки, інвентар).',
-                'end-4-4': 'Перевірити цілісність предметів зі скла та крихких матеріалів.',
-                'end-5-1': 'Провести коротку нараду з командою для підбиття підсумків зміни.',
-            };
+            updateClock();
+            setInterval(updateClock, 60000);
+
+            // Populate Modals HTML
+            document.getElementById('completionModal').innerHTML = `
+                <div class="card p-6 rounded-2xl shadow-xl w-full max-w-lg text-center modal-content max-h-[90vh] overflow-y-auto">
+                    <h3 id="modalMessage" class="text-xl font-bold mb-4">Попередній перегляд звіту</h3>
+                    <div id="previewContent" class="text-left mb-6 text-sm border rounded p-2 bg-white text-gray-900 max-h-60 overflow-y-auto">
+                    </div>
+                    <div class="flex flex-col gap-3">
+                        <button id="submitReportBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors">Підтвердити та Відправити</button>
+                        <button id="closeModalBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md transition-colors">Повернутися до редагування</button>
+                    </div>
+                    <div id="submitStatus" class="mt-2 text-sm hidden font-bold"></div>
+                </div>`;
+
+            document.getElementById('commentModal').innerHTML = `
+                <div class="card p-6 rounded-2xl shadow-xl max-w-sm w-full text-center modal-content">
+                    <h3 class="text-xl font-bold mb-4">Ваш коментар</h3>
+                    <textarea id="commentTextarea" class="w-full p-2 border rounded-lg card text-muted" rows="4"></textarea>
+                    <div class="mt-4 flex justify-end space-x-2">
+                         <button id="cancelCommentBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md transition-colors">Скасувати</button>
+                         <button id="saveCommentBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors">Зберегти</button>
+                    </div>
+                </div>`;
 
             const contactsData = [
                 { name: 'Бузницький Юрій', phone: '050-446-79-73', tel: '+380504467973' },
@@ -320,33 +472,7 @@
                 { name: 'Матвеєва Олена', phone: '050-334-02-67', tel: '+380503340267' },
             ];
             
-            // Populate checklist items with YES/NO buttons
-            Object.keys(checklistData).forEach(id => {
-                const itemEl = document.getElementById(id);
-                if(itemEl) {
-                    itemEl.innerHTML = `
-                        <div class="flex flex-col md:flex-row w-full md:items-center gap-3">
-                            <span class="task-text flex-1 font-medium">${checklistData[id]}</span>
-                            
-                            <div class="actions flex flex-wrap items-center gap-2 md:ml-auto">
-                                <button class="btn-complete px-3 py-1.5 text-sm font-semibold rounded-md border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-500 dark:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors">
-                                    ✓ Виконано
-                                </button>
-                                <button class="btn-fail px-3 py-1.5 text-sm font-semibold rounded-md border-2 border-red-500 text-red-600 hover:bg-red-50 dark:border-red-500 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors">
-                                    ✗ Не виконано
-                                </button>
-                                <button class="comment-btn p-2 rounded-full border-2 border-transparent hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors" title="Додати коментар">
-                                    <svg class="h-5 w-5 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="comment-text hidden w-full break-words"></div>
-                    `;
-                }
-            });
-
-            // Populate contacts
-            const contactsContainer = document.querySelector('#contactsSection .space-y-4');
+            const contactsContainer = document.querySelector('.contact-list');
             contactsData.forEach(contact => {
                 const contactEl = document.createElement('div');
                 contactEl.className = 'bg-gray-50 dark:bg-slate-600 p-4 rounded-lg flex items-center justify-between';
@@ -361,29 +487,241 @@
                 contactsContainer.appendChild(contactEl);
             });
 
-            // Populate Modals
-            document.getElementById('completionModal').innerHTML = `
-                <div class="card p-6 rounded-2xl shadow-xl max-w-sm w-full text-center modal-content">
-                    <h3 id="modalMessage" class="text-xl font-bold mb-4"></h3>
-                    <button id="closeModalBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors w-full sm:w-auto">Закрити</button>
-                    <a id="sendReportLink" href="#" class="block mt-4 text-blue-600 hover:underline">Надіслати звіт на пошту</a>
-                </div>`;
-
-            document.getElementById('commentModal').innerHTML = `
-                <div class="card p-6 rounded-2xl shadow-xl max-w-sm w-full text-center modal-content">
-                    <h3 class="text-xl font-bold mb-4">Ваш коментар</h3>
-                    <textarea id="commentTextarea" class="w-full p-2 border rounded-lg card text-muted focus:outline-none focus:ring-2 focus:ring-emerald-500" rows="4"></textarea>
-                    <div class="mt-4 flex flex-col sm:flex-row justify-end gap-2">
-                         <button id="cancelCommentBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md transition-colors w-full sm:w-auto">Скасувати</button>
-                         <button id="saveCommentBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors w-full sm:w-auto">Зберегти</button>
-                    </div>
-                </div>`;
-            
-            // Element Refs
-            const allChecklistItems = document.querySelectorAll('.checklist-item');
+            const checklistContainer = document.getElementById('checklistContainer');
             const employeeSelect = document.getElementById('employeeSelect');
+            const commentModal = document.getElementById('commentModal');
+            const commentTextarea = document.getElementById('commentTextarea');
+            const completionModal = document.getElementById('completionModal');
+            
+            let currentSection = 'start';
+            let currentPhotos = {}; 
             let appState = {};
-            const STORAGE_KEY = 'shiftChecklistState_v2'; // Changed key due to data structure change
+            const STORAGE_KEY = 'shiftMasterChecklistState_v1';
+            const OFFLINE_KEY = 'offlineMasterReportsQueue';
+
+            const renderChecklist = (sectionId) => {
+                checklistContainer.innerHTML = '';
+                const isStart = sectionId === 'start';
+                
+                const contentWrapper = document.createElement('section');
+                contentWrapper.id = `${sectionId}ShiftSection`;
+                
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'card p-4 sm:p-6 rounded-2xl shadow-md mb-4';
+                headerDiv.innerHTML = `
+                    <div class="flex justify-end items-center mb-4">
+                         <button id="reset${isStart ? 'Start' : 'End'}" class="px-3 py-1 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-md">Очистити список</button>
+                    </div>
+                    <div id="groupsContainer" class="space-y-4"></div>
+                `;
+                contentWrapper.appendChild(headerDiv);
+                
+                const groupsContainer = headerDiv.querySelector('#groupsContainer');
+
+                checklistConfig.forEach(group => {
+                    const activeItems = group.items.filter(item => item.visibleOn === 'all' || item.visibleOn === sectionId);
+                    if (activeItems.length === 0) return;
+
+                    const groupDiv = document.createElement('div');
+                    groupDiv.innerHTML = `<h3 class="font-bold text-lg mb-2 text-emerald-700 dark:text-emerald-400">${group.title}</h3>`;
+                    
+                    const list = document.createElement('ul');
+                    list.className = 'space-y-3';
+
+                    activeItems.forEach(item => {
+                        const uniqueId = `${sectionId}-${item.id}`; 
+                        const li = document.createElement('li');
+                        li.id = uniqueId;
+                        li.className = 'checklist-item p-3 rounded-lg';
+                        li.dataset.type = item.type;
+
+                        const photoHtml = `
+                            <label class="cursor-pointer flex-shrink-0 ml-2">
+                                <input type="file" accept="image/*" capture="environment" class="hidden photo-input">
+                                <div class="photo-btn p-2 ${item.photoLabel ? 'px-3' : 'w-10'} rounded-lg border border-gray-300 dark:border-slate-600 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors h-10 flex items-center justify-center" title="${item.photoLabel || 'Додати фото'}">
+                                    <svg class="h-6 w-6 text-muted ${item.photoLabel ? 'mr-1 sm:mr-2' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    ${item.photoLabel ? `<span class="text-xs sm:text-sm font-semibold text-slate-500 whitespace-nowrap hidden sm:inline-block">${item.photoLabel}</span><span class="text-xs font-semibold text-slate-500 sm:hidden">Фото</span>` : ''}
+                                </div>
+                            </label>
+                        `;
+
+                        let controlsHtml = '';
+                        if (item.type === 'binary') {
+                            const buttonsHtml = item.options.map((opt, index) => {
+                                let kind = 'good';
+                                if (index === item.options.length - 1) kind = 'bad';
+                                return `<button class="option-btn px-2 py-2 rounded text-sm font-medium flex-1 min-h-[40px]" data-val="${opt}" data-kind="${kind}">${opt}</button>`;
+                            }).join('');
+
+                            controlsHtml = `
+                                <div class="flex gap-2 mt-2 controls-area items-center flex-wrap sm:flex-nowrap">
+                                    ${buttonsHtml}
+                                    ${photoHtml}
+                                </div>
+                            `;
+                        } 
+
+                        li.innerHTML = `
+                            <div class="w-full">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex flex-1 items-center mr-2">
+                                        <span class="task-text font-medium text-lg leading-tight">${item.text}</span>
+                                    </div>
+                                    <div class="flex items-center gap-1 photo-controls">
+                                        <button class="comment-btn p-2 rounded-lg border border-gray-300 dark:border-slate-600 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors h-10 w-10 flex items-center justify-center flex-shrink-0" title="Додати коментар">
+                                            <svg class="h-6 w-6 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                ${controlsHtml}
+                                <div class="flex items-center gap-2 mt-1">
+                                    <div class="print-value text-emerald-600"></div>
+                                    <img src="" class="photo-thumbnail hidden">
+                                </div>
+                                <div class="comment-text mt-1 hidden w-full text-sm text-gray-500 italic"></div>
+                            </div>
+                        `;
+                        list.appendChild(li);
+                    });
+                    
+                    groupDiv.appendChild(list);
+                    groupsContainer.appendChild(groupDiv);
+                });
+
+                const submitDiv = document.createElement('div');
+                submitDiv.id = "mainSubmitSection";
+                submitDiv.className = "mt-6 mb-4";
+                submitDiv.innerHTML = `
+                    <button id="mainSubmitBtn" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg transition-transform transform active:scale-95 flex items-center justify-center text-lg">
+                        <svg class="w-6 h-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Перевірити та відправити звіт
+                    </button>
+                `;
+                contentWrapper.appendChild(submitDiv);
+
+                checklistContainer.appendChild(contentWrapper);
+                
+                attachItemListeners();
+                document.getElementById(`reset${isStart ? 'Start' : 'End'}`).addEventListener('click', async () => {
+                    if(await customConfirm("Ви впевнені, що хочете очистити всі відповіді в цій секції?")) {
+                        clearSectionData(currentSection);
+                    }
+                });
+                document.getElementById('mainSubmitBtn').addEventListener('click', () => showCompletionModal(currentSection));
+            };
+
+            const handlePhotoUpload = (input, item, uniqueId) => {
+                if (!employeeSelect.value) { 
+                    customAlert("Спочатку оберіть своє ім'я зі списку зверху!"); 
+                    input.value = ''; 
+                    return; 
+                }
+                
+                if (input.files && input.files[0]) {
+                    const file = input.files[0];
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(e) {
+                        const img = new Image();
+                        img.onload = function() {
+                            const canvas = document.getElementById('compressionCanvas');
+                            const ctx = canvas.getContext('2d');
+                            const MAX_WIDTH = 800;
+                            let width = img.width;
+                            let height = img.height;
+                            
+                            if (width > MAX_WIDTH) {
+                                height *= MAX_WIDTH / width;
+                                width = MAX_WIDTH;
+                            }
+                            canvas.width = width;
+                            canvas.height = height;
+                            ctx.drawImage(img, 0, 0, width, height);
+                            const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                            currentPhotos[uniqueId] = dataUrl;
+                            
+                            const thumb = item.querySelector('.photo-thumbnail');
+                            thumb.src = dataUrl;
+                            thumb.classList.remove('hidden');
+                            thumb.classList.add('show');
+                            item.querySelector('.photo-btn').classList.add('has-photo');
+                            item.classList.remove('error-highlight');
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const attachItemListeners = () => {
+                const items = document.querySelectorAll('.checklist-item');
+                
+                items.forEach(item => {
+                    const id = item.id;
+                    const type = item.dataset.type;
+
+                    const photoInput = item.querySelector('.photo-input');
+                    if(photoInput) photoInput.addEventListener('change', () => handlePhotoUpload(photoInput, item, id));
+
+                    item.querySelector('.comment-btn').addEventListener('click', () => openCommentModal(item));
+
+                    if (type === 'binary') {
+                        const btns = item.querySelectorAll('.option-btn');
+                        btns.forEach(btn => {
+                            btn.addEventListener('click', () => {
+                                if (!employeeSelect.value) { customAlert("Спочатку оберіть своє ім'я!"); return; }
+                                btns.forEach(b => b.classList.remove('selected-good', 'selected-bad', 'selected-neutral'));
+                                if (btn.dataset.kind === 'good') btn.classList.add('selected-good');
+                                else if (btn.dataset.kind === 'bad') btn.classList.add('selected-bad');
+                                else btn.classList.add('selected-neutral');
+                                
+                                item.classList.add('completed');
+                                item.classList.remove('error-highlight');
+                                item.dataset.value = btn.dataset.val;
+                                item.querySelector('.print-value').textContent = `Обрано: ${btn.dataset.val}`;
+                                saveState();
+                                updateProgress();
+                            });
+                        });
+                    }
+                });
+            };
+
+            let currentCommentItem = null;
+            const openCommentModal = (item) => {
+                currentCommentItem = item;
+                commentTextarea.value = item.querySelector('.comment-text').textContent;
+                commentModal.style.display = 'flex';
+            };
+            
+            const saveCommentBtn = document.getElementById('saveCommentBtn');
+            if(saveCommentBtn) {
+                saveCommentBtn.addEventListener('click', () => {
+                    if (currentCommentItem) {
+                        const commentEl = currentCommentItem.querySelector('.comment-text');
+                        const newComment = commentTextarea.value.trim();
+                        commentEl.textContent = newComment;
+                        commentEl.classList.toggle('hidden', !newComment);
+                        
+                        const cBtn = currentCommentItem.querySelector('.comment-btn');
+                        if(newComment) cBtn.classList.add('has-comment');
+                        else cBtn.classList.remove('has-comment');
+
+                        saveState();
+                    }
+                    commentModal.style.display = 'none';
+                });
+            }
+
+            const cancelCommentBtn = document.getElementById('cancelCommentBtn');
+            if(cancelCommentBtn) {
+                cancelCommentBtn.addEventListener('click', () => commentModal.style.display = 'none');
+            }
 
             const saveState = () => {
                 const state = {
@@ -391,13 +729,10 @@
                     employee: employeeSelect.value,
                     theme: document.body.classList.contains('dark') ? 'dark' : 'light'
                 };
-                allChecklistItems.forEach(item => {
-                    let status = null;
-                    if (item.classList.contains('status-completed')) status = 'completed';
-                    if (item.classList.contains('status-failed')) status = 'failed';
-                    
+                document.querySelectorAll('.checklist-item').forEach(item => {
                     state.checklist[item.id] = {
-                        status: status,
+                        completed: item.classList.contains('completed'),
+                        value: item.dataset.value || '',
                         comment: item.querySelector('.comment-text').textContent
                     };
                 });
@@ -407,295 +742,399 @@
             const loadState = () => {
                 const savedState = localStorage.getItem(STORAGE_KEY);
                 if (savedState) {
-                    appState = JSON.parse(savedState);
-
-                    // Restore checklist items
-                    if (appState.checklist) {
-                        allChecklistItems.forEach(item => {
-                            const itemState = appState.checklist[item.id];
-                            if (itemState) {
-                                if (itemState.status === 'completed') item.classList.add('status-completed');
-                                if (itemState.status === 'failed') item.classList.add('status-failed');
-                                
-                                if (itemState.comment) {
-                                    const commentEl = item.querySelector('.comment-text');
-                                    commentEl.textContent = itemState.comment;
-                                    commentEl.classList.remove('hidden');
-                                }
-                            }
-                        });
+                    try {
+                        appState = JSON.parse(savedState);
+                        if (appState.employee) employeeSelect.value = appState.employee;
+                        if (appState.theme === 'dark') document.body.classList.add('dark');
+                    } catch(e) {
+                        console.error("Local storage read error", e);
                     }
-
-                    // Restore employee
-                    if (appState.employee) {
-                        employeeSelect.value = appState.employee;
-                        if(employeeSelect.value) {
-                             document.querySelectorAll('.checklist-item').forEach(i => i.classList.remove('disabled-checklist-item'));
-                             document.getElementById('employeeSelectionHint').classList.add('hidden');
+                }
+            };
+            
+            const restoreDOMState = () => {
+                if(!appState.checklist) return;
+                Object.keys(appState.checklist).forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) {
+                        const data = appState.checklist[id];
+                        if (data.completed) el.classList.add('completed');
+                        if (data.value) {
+                            el.dataset.value = data.value;
+                            if(el.dataset.type === 'binary') {
+                                const btn = Array.from(el.querySelectorAll('.option-btn')).find(b => b.dataset.val === data.value);
+                                if(btn) {
+                                    if(btn.dataset.kind === 'good') btn.classList.add('selected-good');
+                                    else if(btn.dataset.kind === 'bad') btn.classList.add('selected-bad');
+                                    else btn.classList.add('selected-neutral');
+                                }
+                                el.querySelector('.print-value').textContent = `Обрано: ${data.value}`;
+                            } 
+                        }
+                        if (data.comment) {
+                            const cEl = el.querySelector('.comment-text');
+                            cEl.textContent = data.comment;
+                            cEl.classList.remove('hidden');
+                            el.querySelector('.comment-btn').classList.add('has-comment');
                         }
                     }
-
-                    // Restore theme
-                    if (appState.theme === 'dark') {
-                        document.body.classList.add('dark');
-                    }
-                }
-            };
-            
-            const commentModal = document.getElementById('commentModal');
-            const commentTextarea = document.getElementById('commentTextarea');
-            let currentCommentItem = null;
-
-            allChecklistItems.forEach(item => {
-                const btnComplete = item.querySelector('.btn-complete');
-                const btnFail = item.querySelector('.btn-fail');
-                const btnComment = item.querySelector('.comment-btn');
-
-                // Complete Button Logic
-                btnComplete.addEventListener('click', () => {
-                    if (!employeeSelect.value) {
-                        document.getElementById('employeeSelectionHint').classList.remove('hidden');
-                        return;
-                    }
-                    // Toggle if already selected, otherwise set to completed
-                    if (item.classList.contains('status-completed')) {
-                        item.classList.remove('status-completed');
-                    } else {
-                        item.classList.add('status-completed');
-                        item.classList.remove('status-failed');
-                    }
-                    saveState();
-                    updateProgress();
                 });
-
-                // Fail Button Logic
-                btnFail.addEventListener('click', () => {
-                    if (!employeeSelect.value) {
-                        document.getElementById('employeeSelectionHint').classList.remove('hidden');
-                        return;
-                    }
-                    // Toggle if already selected, otherwise set to failed
-                    if (item.classList.contains('status-failed')) {
-                        item.classList.remove('status-failed');
-                    } else {
-                        item.classList.add('status-failed');
-                        item.classList.remove('status-completed');
-                    }
-                    saveState();
-                    updateProgress();
-                });
-
-                // Comment Button Logic
-                btnComment.addEventListener('click', () => {
-                    currentCommentItem = item;
-                    commentTextarea.value = item.querySelector('.comment-text').textContent;
-                    commentModal.style.display = 'flex';
-                });
-            });
-
-            document.getElementById('saveCommentBtn').addEventListener('click', () => {
-                if (currentCommentItem) {
-                    const commentEl = currentCommentItem.querySelector('.comment-text');
-                    const newComment = commentTextarea.value.trim();
-                    commentEl.textContent = newComment;
-                    commentEl.classList.toggle('hidden', !newComment);
-                    saveState();
-                }
-                commentModal.style.display = 'none';
-            });
-            
-            document.getElementById('cancelCommentBtn').addEventListener('click', () => {
-                commentModal.style.display = 'none';
-            });
-            
-            const completionModal = document.getElementById('completionModal');
-            
-            const generateAndSendReport = (section) => {
-                if (!employeeSelect.value) {
-                    alert('Будь ласка, оберіть своє ім\'я перед відправкою звіту.');
-                    return;
-                }
-
-                const items = document.querySelectorAll(`#${section}ShiftSection .checklist-item`);
-                const sectionTitle = (section === 'start') ? 'Початок зміни' : 'Кінець зміни';
-                const date = new Date().toLocaleString('uk-UA');
-
-                let reportBody = `Звіт по чек-листу Майстра зміни\n\n`;
-                reportBody += `Розділ: ${sectionTitle}\n`;
-                reportBody += `Майстер: ${employeeSelect.value}\n`;
-                reportBody += `Дата та час: ${date}\n\n`;
-                reportBody += `СТАТУС ЗАВДАНЬ:\n--------------------------------\n`;
-
-                items.forEach((item, index) => {
-                    const taskText = item.querySelector('.task-text').textContent.trim();
-                    const comment = item.querySelector('.comment-text').textContent.trim();
-                    
-                    let statusText = '⚪ ПРОПУЩЕНО (немає відповіді)';
-                    if (item.classList.contains('status-completed')) statusText = '✅ Виконано';
-                    if (item.classList.contains('status-failed')) statusText = '❌ НЕ ВИКОНАНО';
-
-                    reportBody += `${index + 1}. ${taskText}\n   Статус: ${statusText}\n`;
-                    if (comment) {
-                        reportBody += `   Коментар: ${comment}\n`;
-                    }
-                    reportBody += `\n`;
-                });
-
-                const emailSubject = encodeURIComponent(`Звіт Майстра: ${sectionTitle} - ${employeeSelect.value}`);
-                const emailBody = encodeURIComponent(reportBody);
-                const recipients = 'Buznitskiy7@gmail.com,Dyndarnastia@gmail.com,olgagoncharukm@gmail.com,sashaalieva18@gmail.com'; 
-
-                window.location.href = `mailto:${recipients}?subject=${emailSubject}&body=${emailBody}`;
-            };
-
-            const showCompletionModal = (section) => {
-                const modalMessage = document.getElementById('modalMessage');
-                const sendReportLink = document.getElementById('sendReportLink');
-                
-                let message = '';
-                if (section === 'start') {
-                    message = "Підготовка завершена. Вдалої зміни!";
-                } else {
-                    message = "Зміна завершена. Дякуємо за роботу!";
-                }
-                modalMessage.textContent = message;
-                completionModal.style.display = 'flex';
-
-                sendReportLink.onclick = (e) => {
-                    e.preventDefault();
-                    generateAndSendReport(section);
-                };
-            };
-            
-            // Other event listeners
-            const startShiftBtn = document.getElementById('startShiftBtn');
-            const endShiftBtn = document.getElementById('endShiftBtn');
-            const contactsBtn = document.getElementById('contactsBtnHeader');
-            const startShiftSection = document.getElementById('startShiftSection');
-            const endShiftSection = document.getElementById('endShiftSection');
-            const contactsSection = document.getElementById('contactsSection');
-            const footerStatus = document.getElementById('footerStatus');
-            const currentProgressBar = document.getElementById('currentProgressBar');
-            const currentStatus = document.getElementById('currentStatus');
-            const resetStartBtn = document.getElementById('resetStart');
-            const resetEndBtn = document.getElementById('resetEnd');
-            const themeToggle = document.getElementById('themeToggle');
-            const printBtn = document.getElementById('printBtn');
-            const employeeSelectionHint = document.getElementById('employeeSelectionHint');
-            const closeModalBtn = document.getElementById('closeModalBtn');
-            
-            let currentSection = 'start';
-
-            const employees = ["Гончарук Ольга", "Шута Олександра", "Заміна"];
-            employees.forEach(e => employeeSelect.add(new Option(e, e)));
-
-            employeeSelect.addEventListener('change', () => {
-                if (employeeSelect.value) {
-                    document.querySelectorAll('.checklist-item').forEach(i => i.classList.remove('disabled-checklist-item'));
-                    employeeSelectionHint.classList.add('hidden');
-                } else {
-                    document.querySelectorAll('.checklist-item').forEach(i => i.classList.add('disabled-checklist-item'));
-                }
-                saveState();
-            });
-
-            const switchView = (view) => {
-                currentSection = view;
-                [startShiftSection, endShiftSection, contactsSection].forEach(s => s.classList.add('hidden'));
-                [startShiftBtn, endShiftBtn].forEach(b => b.classList.remove('active'));
-                
-                footerStatus.style.display = 'flex';
-
-                if (view === 'start') {
-                    startShiftSection.classList.remove('hidden');
-                    startShiftBtn.classList.add('active');
-                } else if (view === 'end') {
-                    endShiftSection.classList.remove('hidden');
-                    endShiftBtn.classList.add('active');
-                } else if (view === 'contacts') {
-                    contactsSection.classList.remove('hidden');
-                    footerStatus.style.display = 'none';
-                }
                 updateProgress();
             };
 
             const updateProgress = () => {
-                if (currentSection === 'contacts') return;
-                
+                if(currentSection === 'contacts') return;
                 const items = document.querySelectorAll(`#${currentSection}ShiftSection .checklist-item`);
-                // Progress counts as "done" if the user clicked EITHER "Completed" OR "Failed"
-                const addressedItems = document.querySelectorAll(`#${currentSection}ShiftSection .checklist-item.status-completed, #${currentSection}ShiftSection .checklist-item.status-failed`).length;
-                
+                const completedCount = document.querySelectorAll(`#${currentSection}ShiftSection .checklist-item.completed`).length;
                 const total = items.length;
-                const percentage = total > 0 ? (addressedItems / total) * 100 : 0;
+                const percentage = total > 0 ? (completedCount / total) * 100 : 0;
                 
-                currentProgressBar.style.width = `${percentage}%`;
-                
-                if(total > 0 && addressedItems === total) {
-                      currentStatus.textContent = 'Всі завдання перевірено!';
-                      // Automatically show modal only if we just hit 100%
-                      showCompletionModal(currentSection);
-                } else {
-                      currentStatus.textContent = `Залишилось невідмічених: ${total - addressedItems}`;
-                }
+                document.getElementById('currentProgressBar').style.width = `${percentage}%`;
+                document.getElementById('currentStatus').textContent = `Залишилось завдань: ${total - completedCount}`;
             };
-            
-            resetStartBtn.addEventListener('click', () => {
-                 if(confirm('Ви впевнені, що хочете скинути всі відмітки початку зміни?')) {
-                     document.querySelectorAll('#startShiftSection .checklist-item').forEach(item => {
-                        item.classList.remove('status-completed', 'status-failed');
-                        const commentEl = item.querySelector('.comment-text');
-                        commentEl.textContent = '';
-                        commentEl.classList.add('hidden');
-                     });
-                     saveState();
-                     updateProgress();
-                 }
-            });
 
-            resetEndBtn.addEventListener('click', () => {
-                 if(confirm('Ви впевнені, що хочете скинути всі відмітки кінця зміни?')) {
-                    document.querySelectorAll('#endShiftSection .checklist-item').forEach(item => {
-                        item.classList.remove('status-completed', 'status-failed');
-                        const commentEl = item.querySelector('.comment-text');
-                        commentEl.textContent = '';
-                        commentEl.classList.add('hidden');
-                    });
-                    saveState();
-                    updateProgress();
-                 }
-            });
-
-            themeToggle.addEventListener('click', () => {
-                document.body.classList.toggle('dark');
+            const clearSectionData = (sectionId) => {
+                const items = document.querySelectorAll(`#${sectionId}ShiftSection .checklist-item`);
+                items.forEach(item => {
+                    item.classList.remove('completed');
+                    delete item.dataset.value;
+                    item.querySelector('.comment-text').textContent = '';
+                    item.querySelector('.comment-text').classList.add('hidden');
+                    item.querySelector('.print-value').textContent = '';
+                    item.querySelector('.comment-btn').classList.remove('has-comment');
+                    
+                    const thumb = item.querySelector('.photo-thumbnail');
+                    if(thumb) { thumb.src = ''; thumb.classList.add('hidden'); }
+                    const pBtn = item.querySelector('.photo-btn');
+                    if(pBtn) pBtn.classList.remove('has-photo');
+                    
+                    const pInput = item.querySelector('.photo-input');
+                    if(pInput) pInput.value = '';
+                    
+                    delete currentPhotos[item.id];
+                    
+                    if(item.dataset.type === 'binary') {
+                        item.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected-good', 'selected-bad', 'selected-neutral'));
+                    } 
+                });
                 saveState();
-            });
-            
-            printBtn.addEventListener('click', () => window.print());
-            startShiftBtn.addEventListener('click', () => switchView('start'));
-            endShiftBtn.addEventListener('click', () => switchView('end'));
-            contactsBtn.addEventListener('click', () => switchView('contacts'));
-            closeModalBtn.addEventListener('click', () => completionModal.style.display = 'none');
+                updateProgress();
+            };
 
-            // --- Initial Load ---
-            const displayDate = () => {
-                const dateElement = document.getElementById('current-date');
-                if (dateElement) {
-                    const now = new Date();
-                    const options = { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' };
-                    const formattedDate = new Intl.DateTimeFormat('uk-UA', options).format(now);
-                    dateElement.textContent = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+            const updateNetworkStatus = () => {
+                const dot = document.getElementById('statusDot');
+                const text = document.getElementById('statusText');
+                const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+                
+                if (!navigator.onLine) {
+                    dot.className = 'status-dot offline';
+                    text.textContent = `Офлайн (${queue.length})`;
+                } else if (queue.length > 0) {
+                    dot.className = 'status-dot offline';
+                    text.textContent = `Черга (${queue.length})`;
+                } else {
+                    dot.className = 'status-dot online';
+                    text.textContent = 'Онлайн';
                 }
             };
+
+            const saveReportOffline = (reportData) => {
+                const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+                queue.push(reportData);
+                localStorage.setItem(OFFLINE_KEY, JSON.stringify(queue));
+                updateNetworkStatus();
+            };
+
+            const processOfflineQueue = async () => {
+                const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+                if (queue.length === 0) return;
+
+                const statusDot = document.getElementById('statusDot');
+                statusDot.className = 'status-dot syncing';
+                document.getElementById('statusText').textContent = 'Синхронізація...';
+
+                const newQueue = [];
+                for (const report of queue) {
+                    try {
+                        await fetch(GOOGLE_SCRIPT_URL, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(report)
+                        });
+                    } catch (e) {
+                        console.error('Failed to sync report', e);
+                        newQueue.push(report);
+                    }
+                }
+
+                localStorage.setItem(OFFLINE_KEY, JSON.stringify(newQueue));
+                updateNetworkStatus();
+                
+                if (newQueue.length === 0) {
+                    customAlert('Всі офлайн звіти успішно відправлено!');
+                }
+            };
+
+            window.addEventListener('online', () => {
+                updateNetworkStatus();
+                processOfflineQueue();
+            });
+            window.addEventListener('offline', updateNetworkStatus);
+            document.getElementById('networkStatusBtn').addEventListener('click', processOfflineQueue);
+
+            const switchView = (view) => {
+                currentSection = view;
+                document.getElementById('contactsSection').classList.add('hidden');
+                document.getElementById('footerStatus').style.display = 'flex';
+                document.getElementById('startShiftBtn').classList.remove('active');
+                document.getElementById('endShiftBtn').classList.remove('active');
+
+                if (view === 'contacts') {
+                    checklistContainer.classList.add('hidden');
+                    document.getElementById('contactsSection').classList.remove('hidden');
+                    document.getElementById('footerStatus').style.display = 'none';
+                } else {
+                    checklistContainer.classList.remove('hidden');
+                    renderChecklist(view);
+                    restoreDOMState();
+                    if(view === 'start') document.getElementById('startShiftBtn').classList.add('active');
+                    else document.getElementById('endShiftBtn').classList.add('active');
+                    updateProgress();
+                }
+            };
+
+            const showCompletionModal = (section) => {
+                if (!employeeSelect.value) { customAlert("Спочатку оберіть своє ім'я!"); return; }
+                const modal = document.getElementById('completionModal');
+                
+                const items = Array.from(document.querySelectorAll(`#${section}ShiftSection .checklist-item`));
+                let tableHtml = '<table class="preview-table w-full"><thead><tr><th>Питання</th><th>Статус / Відповідь</th></tr></thead><tbody>';
+                
+                let allCompleted = true;
+                let incompleteItems = [];
+
+                items.forEach(item => {
+                    const text = item.querySelector('.task-text').textContent;
+                    
+                    const uniqueId = item.id;
+                    const configId = uniqueId.replace(`${section}-`, '');
+                    let isPhotoRequired = false;
+                    checklistConfig.forEach(g => {
+                        const cfgItem = g.items.find(i => i.id === configId);
+                        if (cfgItem && cfgItem.photoRequired) isPhotoRequired = true;
+                    });
+
+                    const isFilled = item.classList.contains('completed');
+                    const hasPhoto = !!currentPhotos[uniqueId];
+                    
+                    let isItemValid = isFilled;
+                    if (isPhotoRequired && !hasPhoto) isItemValid = false;
+
+                    if (!isItemValid) {
+                        allCompleted = false;
+                        incompleteItems.push(text);
+                        item.classList.add('error-highlight');
+                    } else {
+                        item.classList.remove('error-highlight');
+                    }
+
+                    let valDisplay = item.dataset.value || '';
+                    if (!isFilled) valDisplay = '<span class="text-red-500 font-bold">Не заповнено</span>';
+                    else if (isPhotoRequired && !hasPhoto) valDisplay = `<span class="text-red-500 font-bold">${valDisplay} (Бракує фото)</span>`;
+                    
+                    const photoIcon = hasPhoto ? '📷' : '';
+                    tableHtml += `<tr><td class="${!isItemValid ? 'text-red-600 font-medium' : ''}">${text}</td><td>${valDisplay} ${photoIcon}</td></tr>`;
+                });
+                tableHtml += '</tbody></table>';
+                
+                document.getElementById('previewContent').innerHTML = tableHtml;
+                
+                const msgEl = document.getElementById('modalMessage');
+                if (allCompleted) {
+                    msgEl.innerHTML = 'Попередній перегляд звіту <span class="block text-sm text-green-600 font-normal mt-1">Всі пункти заповнено коректно!</span>';
+                } else {
+                    msgEl.innerHTML = 'Попередній перегляд звіту <span class="block text-sm text-red-600 font-bold mt-1">Увага! Є незаповнені пункти.</span>';
+                }
+
+                modal.style.display = 'flex';
+                
+                const btn = document.getElementById('submitReportBtn');
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                
+                if (allCompleted) {
+                    newBtn.textContent = 'Підтвердити та Відправити';
+                    newBtn.className = 'bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors w-full';
+                    newBtn.addEventListener('click', () => submitReport(section));
+                } else {
+                    newBtn.textContent = 'Заповнити пропущені пункти';
+                    newBtn.className = 'bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors animate-pulse w-full';
+                    newBtn.addEventListener('click', () => {
+                        modal.style.display = 'none';
+                        customAlert(`Ви пропустили ${incompleteItems.length} пунктів (або не додали обов'язкове фото)! Будь ласка, заповніть їх (вони підсвічені червоним та блимають).`);
+                        
+                        setTimeout(() => {
+                            const firstInvalid = document.querySelector('.error-highlight');
+                            if (firstInvalid) {
+                                firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }, 300);
+                    });
+                }
+            };
+
+            const submitReport = async (section) => {
+                const btn = document.getElementById('submitReportBtn');
+                const status = document.getElementById('submitStatus');
+                btn.disabled = true;
+                btn.textContent = 'Відправка...';
+                status.classList.remove('hidden');
+                status.textContent = 'Обробка даних...';
+                status.className = 'mt-2 text-sm text-blue-600 font-bold';
+
+                const sectionTitle = (section === 'start') ? 'Початок зміни' : 'Кінець зміни';
+                const items = Array.from(document.querySelectorAll(`#${section}ShiftSection .checklist-item`));
+                const total = items.length;
+                const completed = items.filter(i => i.classList.contains('completed')).length;
+
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('uk-UA').replace(/\./g, '-');
+                const timeStr = now.toLocaleTimeString('uk-UA').replace(/:/g, '-');
+
+                const reportItems = items.map(item => {
+                    const uniqueId = item.id;
+                    const itemText = item.querySelector('.task-text').textContent.trim();
+                    const photoBase64 = currentPhotos[uniqueId] || null;
+                    const safeName = itemText.substring(0, 20).replace(/[^a-zа-я0-9]/gi, '_');
+                    const photoName = photoBase64 ? `${safeName}_${dateStr}_${timeStr}.jpg` : null;
+
+                    const configId = uniqueId.replace(`${section}-`, '');
+                    let itemCategory = 'Інше';
+                    checklistConfig.forEach(g => {
+                        if (g.items.some(i => i.id === configId)) itemCategory = g.title;
+                    });
+
+                    const isBad = item.querySelector('.selected-bad') !== null;
+
+                    return {
+                        text: itemText,
+                        completed: item.classList.contains('completed'),
+                        value: item.dataset.value || 'Н/Д',
+                        comment: item.querySelector('.comment-text').textContent.trim(),
+                        photoData: photoBase64,
+                        photoName: photoName,
+                        category: itemCategory,
+                        isBad: isBad
+                    };
+                });
+
+                const reportData = {
+                    date: new Date().toLocaleString('uk-UA'),
+                    time: new Date().toLocaleTimeString('uk-UA'),
+                    mechanic: employeeSelect.value, // Використовуємо те саме поле для імені заради сумісності
+                    role: "Майстер", 
+                    recipients: "Buznitskiy7@gmail.com,Dyndarnastia@gmail.com,olgagoncharukm@gmail.com,sashaalieva18@gmail.com",
+                    shiftStage: sectionTitle,
+                    summary: `Виконано ${completed} з ${total}`,
+                    items: reportItems
+                };
+
+                if (!navigator.onLine) {
+                    saveReportOffline(reportData);
+                    clearSectionData(section);
+                    status.textContent = 'Збережено офлайн!';
+                    setTimeout(() => {
+                        document.getElementById('completionModal').style.display = 'none';
+                        btn.disabled = false;
+                        btn.textContent = 'Підтвердити та Відправити';
+                        status.classList.add('hidden');
+                        
+                        const mechanicName = employeeSelect.value.split(' ')[1] || employeeSelect.value;
+                        customAlert(`Відсутній інтернет. Звіт збережено локально!\n\n${mechanicName}, дякуємо за вашу роботу! Бажаємо хорошого робочого дня! 📋`);
+                    }, 1000);
+                    return;
+                }
+
+                try {
+                    await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(reportData)
+                    });
+                    
+                    clearSectionData(section);
+
+                    status.textContent = '✅ Успішно! Звіт відправлено.';
+                    status.className = 'mt-2 text-sm text-green-600 font-bold';
+                    setTimeout(() => {
+                        document.getElementById('completionModal').style.display = 'none';
+                        btn.disabled = false;
+                        btn.textContent = 'Підтвердити та Відправити';
+                        status.classList.add('hidden');
+                        
+                        const mechanicName = employeeSelect.value.split(' ')[1] || employeeSelect.value;
+                        customAlert(`Звіт успішно відправлено!\n\n${mechanicName}, дякуємо за вашу роботу! Бажаємо хорошого робочого дня! 📋`);
+                    }, 1000);
+                } catch (e) {
+                    console.error(e);
+                    saveReportOffline(reportData);
+                    clearSectionData(section);
+                    status.textContent = 'Збережено офлайн (помилка мережі).';
+                    setTimeout(() => {
+                        document.getElementById('completionModal').style.display = 'none';
+                        btn.disabled = false;
+                        btn.textContent = 'Підтвердити та Відправити';
+                        status.classList.add('hidden');
+                        
+                        const mechanicName = employeeSelect.value.split(' ')[1] || employeeSelect.value;
+                        customAlert(`Помилка мережі. Звіт збережено локально!\n\n${mechanicName}, дякуємо за вашу роботу! Бажаємо хорошого робочого дня! 📋`);
+                    }, 1000);
+                }
+            };
+            
+            document.getElementById('footerStatus').addEventListener('click', () => {
+                if(currentSection !== 'contacts') showCompletionModal(currentSection);
+            });
+
+            // Init Employee List
+            if(employeeSelect) {
+                const employees = ["Гончарук Ольга", "Шута Олександра", "Заміна"];
+                employees.forEach(e => employeeSelect.add(new Option(e, e)));
+                employeeSelect.addEventListener('change', saveState);
+            }
+            
+            const themeToggleBtn = document.getElementById('themeToggle');
+            if(themeToggleBtn) {
+                themeToggleBtn.addEventListener('click', () => {
+                    document.body.classList.toggle('dark');
+                    saveState();
+                });
+            }
+            
+            const printBtn = document.getElementById('printBtn');
+            if(printBtn) {
+                printBtn.addEventListener('click', () => window.print());
+            }
+            
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            if(closeModalBtn) {
+                closeModalBtn.addEventListener('click', () => completionModal.style.display = 'none');
+            }
+            
+            const startShiftBtn = document.getElementById('startShiftBtn');
+            if(startShiftBtn) startShiftBtn.addEventListener('click', () => switchView('start'));
+            
+            const endShiftBtn = document.getElementById('endShiftBtn');
+            if(endShiftBtn) endShiftBtn.addEventListener('click', () => switchView('end'));
+            
+            const contactsBtnHeader = document.getElementById('contactsBtnHeader');
+            if(contactsBtnHeader) contactsBtnHeader.addEventListener('click', () => switchView('contacts'));
 
             loadState();
-            displayDate();
-            const hash = window.location.hash;
-            if (hash === '#contacts') {
-                switchView('contacts');
-            } else {
-                switchView('start');
-            }
+            updateNetworkStatus(); 
+            switchView('start');
         });
     </script>
 </body>
