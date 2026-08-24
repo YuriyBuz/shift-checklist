@@ -234,6 +234,9 @@
             <select id="employeeSelect" class="block w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 card text-muted">
                 <option value="">Оберіть зі списку</option>
             </select>
+            <div class="flex justify-end mt-2">
+                <button id="logoutBtn" class="text-xs font-semibold text-muted hover:text-emerald-600 transition-colors">Вийти</button>
+            </div>
         </div>
 
         <nav class="flex justify-center items-center mb-6 card p-2 rounded-xl shadow-sm gap-2">
@@ -274,6 +277,23 @@
             <h3 id="customDialogMessage" class="text-lg font-bold mb-6 text-slate-800 dark:text-white whitespace-pre-wrap"></h3>
             <div class="flex justify-center gap-3" id="customDialogButtons">
             </div>
+        </div>
+    </div>
+
+    <div id="authOverlay" class="fixed inset-0 hidden items-center justify-center modal-overlay z-[2500] p-4">
+        <div class="card p-6 rounded-2xl shadow-xl w-full max-w-sm text-center">
+            <img src="https://foodline-production.com/wp-content/uploads/2021/10/3752781497_3752781497.webp" alt="Foodline Production Logo" class="w-20 h-auto mx-auto mb-4 rounded-lg">
+
+            <div id="authLoginPane">
+                <h3 class="text-xl font-bold mb-1">Вхід за PIN</h3>
+                <p class="text-muted text-sm mb-4">Особистий код працівника</p>
+                <input id="authPin" type="password" inputmode="numeric" autocomplete="off" maxlength="8"
+                       class="block w-full p-3 border border-gray-300 dark:border-slate-600 rounded-lg text-center text-2xl tracking-[0.5em] font-bold card focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                       placeholder="••••">
+                <button id="authLoginBtn" class="mt-4 w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-colors">Увійти</button>
+            </div>
+
+            <p id="authError" class="mt-3 text-sm font-bold text-red-600 hidden"></p>
         </div>
     </div>
 
@@ -438,7 +458,271 @@
             }
         };
 
-        document.addEventListener('DOMContentLoaded', () => {
+        /* ────────────────────────── ВХІД ЗА PIN ──────────────────────────
+           Зроблено так само, як у ЗІП (Spare-parts-mechanic-service), щоб
+           обидва застосунки поводилися однаково.
+
+           PIN живе тільки в кадровій таблиці, колонка Q. Змінити його
+           з додатку не можна — ані собі, ані комусь. Забув або збігся
+           з чужим — правиться в таблиці.
+
+           Прізвище майстра більше не обирається зі списку: його дає вхід,
+           і саме воно потрапляє у звіт. Підмінити автора неможливо —
+           сервер бере ім'я з підтвердженої сесії, а не з запиту.          */
+
+        const APP_VERSION    = 'master-client-2026-08-25';
+        const CONFIG_VERSION = 'client-2026-08-25';
+        const SESSION_KEY    = 'masterSessionV1';
+        const DEVICE_KEY     = 'masterDeviceIdV1';
+        const ACTIVITY_KEY   = 'masterLastActivityV1';
+        const UNLOCK_KEY     = 'masterOfflineUnlockV1';
+
+        /* Зміна триває 12 годин — стільки ж живе сесія.
+           Простій довший за це — привід перепитати PIN. Обхід цеху з
+           паузами між пунктами сюди вкладається; телефон, забутий
+           у роздягальні, — ні. */
+        const IDLE_LIMIT_MS      = 30 * 60 * 1000;
+        const OFFLINE_SESSION_MS = 12 * 60 * 60 * 1000;
+        const UNLOCK_MAX_AGE_MS  = 7 * 24 * 60 * 60 * 1000;   // не довше тижня від входу онлайн
+        const UNLOCK_ITERATIONS  = 150000;
+
+        let session = null;
+        let idleTimer = null;
+        let lastActivityWrite = 0;
+        /* Хук на зміну сесії: підставляє прізвище у поле майстра. Вхід буває
+           не тільки на старті — ще й після простою, протухлої сесії й офлайн-
+           розблокування, і в кожному з цих випадків прізвище треба оновити. */
+        let onSessionChange = () => {};
+
+        const getDeviceId = () => {
+            let id = localStorage.getItem(DEVICE_KEY);
+            if (!id) {
+                id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+                     : Date.now().toString(36) + Math.random().toString(36).slice(2);
+                localStorage.setItem(DEVICE_KEY, id);
+            }
+            return id;
+        };
+
+        /* Свій Content-Type НЕ ставимо: тоді браузер шле text/plain, preflight
+           не виникає — і відповідь можна прочитати. Саме через це старий
+           клієнт із mode:'no-cors' ніколи не знав, чи звіт узагалі дійшов. */
+        const api = async (payload) => {
+            const res = await fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                redirect: 'follow',
+                body: JSON.stringify(Object.assign({ deviceId: getDeviceId() }, payload))
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        };
+
+        const loadSession = () => {
+            try {
+                const stored = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+                if (stored && stored.expiresAt > Date.now()) return stored;
+            } catch (e) { /* зіпсований запис — вважаємо, що сесії немає */ }
+            localStorage.removeItem(SESSION_KEY);
+            return null;
+        };
+        const saveSession = (value) => {
+            session = value;
+            try { localStorage.setItem(SESSION_KEY, JSON.stringify(value)); } catch (e) {}
+        };
+        const dropSession = () => {
+            session = null;
+            try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+        };
+
+        /* ── локальне розблокування без мережі ──
+           На пристрої лежить не PIN, а повільно обчислений перевірник.
+           Це дає змогу заповнити чек-лист там, де немає зв'язку; справжній
+           бар'єр — токен, який сервер перевіряє під час запису. */
+        const toHex = (buffer) => Array.from(new Uint8Array(buffer))
+            .map(b => b.toString(16).padStart(2, '0')).join('');
+
+        const derivePinHash = async (pin, saltHex) => {
+            const salt = Uint8Array.from(saltHex.match(/.{2}/g).map(p => parseInt(p, 16)));
+            const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin),
+                                                      'PBKDF2', false, ['deriveBits']);
+            const bits = await crypto.subtle.deriveBits(
+                { name: 'PBKDF2', salt, iterations: UNLOCK_ITERATIONS, hash: 'SHA-256' }, key, 256);
+            return toHex(bits);
+        };
+
+        const saveOfflineUnlock = async (pin, user) => {
+            if (!window.crypto || !crypto.subtle) return;
+            try {
+                const salt = toHex(crypto.getRandomValues(new Uint8Array(16)));
+                localStorage.setItem(UNLOCK_KEY, JSON.stringify({
+                    salt, hash: await derivePinHash(pin, salt), verifiedAt: Date.now(), user: user
+                }));
+            } catch (e) { /* без крипто-API просто не буде офлайн-входу */ }
+        };
+
+        const tryOfflineUnlock = async (pin) => {
+            if (!window.crypto || !crypto.subtle) return null;
+            let record = null;
+            try { record = JSON.parse(localStorage.getItem(UNLOCK_KEY) || 'null'); } catch (e) { return null; }
+            if (!record || !record.salt) return null;
+            if (Date.now() - record.verifiedAt > UNLOCK_MAX_AGE_MS) return null;
+            try {
+                return (await derivePinHash(pin, record.salt)) === record.hash ? record : null;
+            } catch (e) { return null; }
+        };
+
+        /* ── автовихід через простій ──
+           Мітка часу лежить у сховищі, тому простій переживає і перезавантаження
+           сторінки, і закриття вкладки. */
+        const autoLogout = (why) => {
+            if (!session) return;
+            dropSession();
+            showLoginOverlay(why || 'Сесію завершено. Увійдіть за PIN.');
+        };
+
+        const markActivity = () => {
+            if (!session) return;
+            const now = Date.now();
+            if (now - lastActivityWrite > 5000) {
+                try { localStorage.setItem(ACTIVITY_KEY, String(now)); } catch (e) {}
+                lastActivityWrite = now;
+            }
+            if (idleTimer) clearTimeout(idleTimer);
+            idleTimer = setTimeout(() => autoLogout(
+                'Сесію завершено через ' + (IDLE_LIMIT_MS / 60000) + ' хвилин бездіяльності. Увійдіть за PIN.'),
+                IDLE_LIMIT_MS);
+        };
+
+        const isIdleExpired = () => {
+            const last = Number(localStorage.getItem(ACTIVITY_KEY) || 0);
+            return !!last && Date.now() - last > IDLE_LIMIT_MS;
+        };
+
+        const startIdleWatch = () => {
+            ['click', 'keydown', 'touchstart', 'scroll'].forEach(type =>
+                document.addEventListener(type, markActivity, { passive: true }));
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden && session && isIdleExpired()) {
+                    autoLogout('Сесію завершено через бездіяльність. Увійдіть за PIN.');
+                }
+            });
+            markActivity();
+        };
+
+        /* ── екран входу ── */
+        const setAuthError = (msg) => {
+            const el = document.getElementById('authError');
+            el.textContent = msg || '';
+            el.classList.toggle('hidden', !msg);
+        };
+
+        let loginResolve = null;
+        const showLoginOverlay = (message) => {
+            const o = document.getElementById('authOverlay');
+            o.classList.remove('hidden');
+            o.classList.add('flex');
+            document.getElementById('authPin').value = '';
+            setAuthError(message || '');
+            setTimeout(() => document.getElementById('authPin').focus(), 100);
+        };
+        const hideLoginOverlay = () => {
+            const o = document.getElementById('authOverlay');
+            o.classList.add('hidden');
+            o.classList.remove('flex');
+            document.getElementById('authPin').value = '';
+        };
+
+        const doLogin = async () => {
+            const input = document.getElementById('authPin');
+            const btn = document.getElementById('authLoginBtn');
+            const pin = input.value.trim();
+            if (!pin) { setAuthError('Введіть PIN'); return; }
+
+            setAuthError('');
+            btn.disabled = true; btn.textContent = 'Перевірка…';
+            let data = null, offline = false;
+            try {
+                data = await api({ action: 'login', pin: pin });
+            } catch (e) {
+                // сервера немає — пробуємо локальне розблокування
+                const record = await tryOfflineUnlock(pin);
+                if (record) { data = { ok: true, user: record.user }; offline = true; }
+            }
+            btn.disabled = false; btn.textContent = 'Увійти';
+            input.value = '';
+
+            if (!data) {
+                setAuthError('Немає зв\'язку. Локальний вхід недоступний — спершу увійдіть один раз онлайн.');
+                return;
+            }
+            if (!data.ok) { setAuthError(data.message || 'Невірний PIN'); return; }
+            if (!data.user.can.master) {
+                setAuthError('Ваша роль не дає доступу до чек-листа майстра');
+                return;
+            }
+
+            saveSession({
+                token: offline ? '' : data.token,
+                user: data.user,
+                expiresAt: offline ? (Date.now() + OFFLINE_SESSION_MS)
+                                   : (data.expires_at || Date.now() + OFFLINE_SESSION_MS),
+                offline: offline
+            });
+            if (!offline) saveOfflineUnlock(pin, data.user);   // 150 000 ітерацій — рахуємо у фоні
+
+            hideLoginOverlay();
+            startIdleWatch();
+            onSessionChange();
+            if (offline) {
+                customAlert('Зв\'язку немає. Чек-лист можна заповнити — звіт піде, щойно ' +
+                            'з\'явиться інтернет і ви увійдете онлайн.');
+            }
+            if (loginResolve) { const r = loginResolve; loginResolve = null; r(); }
+        };
+
+        /** Показує екран входу і чекає, доки не увійдуть. */
+        const requireLogin = (message) => new Promise((resolve) => {
+            loginResolve = resolve;
+            showLoginOverlay(message);
+        });
+
+        /** Сервер сказав, що сесії немає: стираємо і просимо PIN. */
+        const handleAuthFailure = (message) => {
+            dropSession();
+            return requireLogin(message || 'Сесію завершено. Увійдіть за PIN.');
+        };
+
+        /**
+         * Повертає, коли на пристрої є дійсна сесія майстра.
+         * Онлайн — звіряємо з сервером: звільнення або зміна ролі мають
+         * подіяти одразу, а не після закінчення сесії.
+         */
+        const bootAuth = async () => {
+            session = loadSession();
+            if (session && isIdleExpired()) { dropSession(); }
+
+            if (session) {
+                if (!session.offline && session.token) {
+                    let r = null;
+                    try { r = await api({ action: 'whoami', token: session.token }); }
+                    catch (e) { r = null; }                       // зв'язку немає — довіряємо сесії
+                    if (r && r.ok) {
+                        if (!r.user.can.master) {
+                            dropSession();
+                            return requireLogin('Ваша роль більше не дає доступу до чек-листа майстра');
+                        }
+                        saveSession(Object.assign({}, session, { user: r.user }));
+                        onSessionChange();
+                    } else if (r) {
+                        dropSession();
+                    }
+                }
+            }
+            if (session) { hideLoginOverlay(); startIdleWatch(); return; }
+            return requireLogin();
+        };
+
+        document.addEventListener('DOMContentLoaded', async () => {
             updateClock();
             setInterval(updateClock, 60000);
 
@@ -498,6 +782,93 @@
             let appState = {};
             const STORAGE_KEY = 'shiftMasterChecklistState_v1';
             const OFFLINE_KEY = 'offlineMasterReportsQueue';
+            let photoBusy = 0;
+
+            const findConfigItem = (configId) => {
+                for (const g of checklistConfig) {
+                    const f = g.items.find(i => i.id === configId);
+                    if (f) return f;
+                }
+                return null;
+            };
+
+            /* Дата зміни — за Києвом, а не за годинником телефона. Майстер,
+               який здає кінець зміни о 00:30, має потрапити у той самий день,
+               що й початок, і в тому ж часовому поясі, що й таблиця. */
+            const kyivDate = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Kyiv' }).format(new Date());
+
+            /* Ідентифікатор звіту робиться ОДИН раз і подорожує разом зі звітом
+               у черзі. Повторну відправку того самого id сервер відкидає як
+               дубль — тому мережевий збій більше не множить звіти. */
+            const makeReportId = (bizDate, stage) => {
+                const st = stage === 'Кінець зміни' ? 'end' : 'start';
+                let rnd = '';
+                if (window.crypto && crypto.getRandomValues) {
+                    rnd = Array.from(crypto.getRandomValues(new Uint8Array(3)))
+                        .map(b => b.toString(16).padStart(2, '0')).join('');
+                } else {
+                    rnd = Math.random().toString(16).slice(2, 8);
+                }
+                return `${bizDate}_master_${st}_${rnd}`;
+            };
+
+            const buildPayload = (section) => {
+                const stage = (section === 'start') ? 'Початок зміни' : 'Кінець зміни';
+                const bizDate = kyivDate();
+                const els = Array.from(document.querySelectorAll(`#${section}ShiftSection .checklist-item`));
+                const done = els.filter(e => e.classList.contains('completed')).length;
+
+                return {
+                    action: 'submit',
+                    report_id: makeReportId(bizDate, stage),
+                    business_date: bizDate,
+                    stage: stage,
+                    role: 'Майстер',
+                    user_id: (session && session.user) ? session.user.user_id : '',
+                    user_name: employeeSelect.value,
+                    config_version: CONFIG_VERSION,
+                    app_version: APP_VERSION,
+                    summary: `Виконано ${done} з ${els.length}`,
+                    // одержувачів більше не диктує клієнт: їх визначає сервер
+                    // за MAIL_TO і роллю автора
+                    items: els.map(el => {
+                        const configId = el.id.replace(`${section}-`, '');
+                        return {
+                            item_id: 'master.' + configId,
+                            value: el.dataset.value || '',
+                            values: [],
+                            comment: el.querySelector('.comment-text').textContent.trim(),
+                            photoData: currentPhotos[el.id] || null
+                        };
+                    })
+                };
+            };
+
+            /** Токен онлайн-сесії. Офлайн-вхід токена не має — звіт чекає в черзі. */
+            const sessionToken = () => (session && !session.offline && session.token) ? session.token : '';
+
+            /** Хто увійшов — той і підписує звіт. Список прізвищ більше не потрібен. */
+            const applySession = () => {
+                if (!employeeSelect || !session || !session.user) return;
+                const label = session.user.name + (session.offline ? ' · офлайн-режим' : '');
+                employeeSelect.innerHTML = '';
+                employeeSelect.add(new Option(label, session.user.name));
+                employeeSelect.value = session.user.name;
+                employeeSelect.disabled = true;
+            };
+
+            /* Стиснення фото триває помітно довго. Поки воно йде, у підвалі
+               видно «Обробка фото», а відправка блокується — інакше звіт піде
+               без щойно зробленого знімка. */
+            const setPhotoBusy = (delta) => {
+                photoBusy = Math.max(0, photoBusy + delta);
+                if (photoBusy > 0) {
+                    document.getElementById('currentStatus').textContent =
+                        photoBusy === 1 ? 'Обробка фото…' : `Обробка фото… (${photoBusy})`;
+                } else {
+                    updateProgress();
+                }
+            };
 
             const renderChecklist = (sectionId) => {
                 checklistContainer.innerHTML = '';
@@ -625,7 +996,11 @@
                 if (input.files && input.files[0]) {
                     const file = input.files[0];
                     const reader = new FileReader();
-                    
+                    setPhotoBusy(1);
+                    reader.onerror = function () {
+                        setPhotoBusy(-1);
+                        customAlert('Не вдалося прочитати фото. Спробуйте зняти ще раз.');
+                    };
                     reader.onload = function(e) {
                         const img = new Image();
                         img.onload = function() {
@@ -651,6 +1026,11 @@
                             thumb.classList.add('show');
                             item.querySelector('.photo-btn').classList.add('has-photo');
                             item.classList.remove('error-highlight');
+                            setPhotoBusy(-1);
+                        };
+                        img.onerror = function () {
+                            setPhotoBusy(-1);
+                            customAlert('Файл не схожий на зображення.');
                         };
                         img.src = e.target.result;
                     };
@@ -838,41 +1218,70 @@
                 }
             };
 
+            /* Повертає false, якщо звіт не вліз у сховище браузера. Мовчазна
+               відмова тут означала б утрачений звіт, тому виклик перевіряється. */
             const saveReportOffline = (reportData) => {
-                const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
-                queue.push(reportData);
-                localStorage.setItem(OFFLINE_KEY, JSON.stringify(queue));
-                updateNetworkStatus();
+                try {
+                    const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+                    queue.push(reportData);
+                    localStorage.setItem(OFFLINE_KEY, JSON.stringify(queue));
+                    updateNetworkStatus();
+                    return true;
+                } catch (e) {
+                    console.error('offline queue full', e);
+                    return false;
+                }
             };
 
+            /* Прапорець проти повторного входу: подія «online» і натискання на
+               індикатор мережі можуть трапитися одночасно, і тоді два прогони
+               читають ту саму чергу — звіт іде двічі, а запис у localStorage
+               наприкінці воскрешає вже відправлений. */
+            let syncingQueue = false;
+
             const processOfflineQueue = async () => {
+                if (syncingQueue) return;
                 const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
                 if (queue.length === 0) return;
+                syncingQueue = true;
 
                 const statusDot = document.getElementById('statusDot');
                 statusDot.className = 'status-dot syncing';
                 document.getElementById('statusText').textContent = 'Синхронізація...';
 
                 const newQueue = [];
+                let sent = 0, refused = 0, lastMsg = '', needLogin = false;
+                try {
                 for (const report of queue) {
+                    let res = null;
                     try {
-                        await fetch(GOOGLE_SCRIPT_URL, {
-                            method: 'POST',
-                            mode: 'no-cors',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(report)
-                        });
+                        // токен беремо ПОТОЧНИЙ: той, що був у мить збереження,
+                        // міг застаріти, поки звіт лежав у черзі
+                        res = await api(Object.assign({}, report, { token: sessionToken() }));
                     } catch (e) {
-                        console.error('Failed to sync report', e);
-                        newQueue.push(report);
+                        res = null;
                     }
+                    if (res && (res.ok || res.duplicate)) { sent++; continue; }
+                    if (res && !res.ok) {
+                        refused++;
+                        lastMsg = res.message || res.error || '';
+                        if (res.error === 'AUTH') needLogin = true;
+                    }
+                    newQueue.push(report);   // відхилений звіт лишається в черзі
                 }
 
                 localStorage.setItem(OFFLINE_KEY, JSON.stringify(newQueue));
                 updateNetworkStatus();
-                
-                if (newQueue.length === 0) {
-                    customAlert('Всі офлайн звіти успішно відправлено!');
+
+                if (sent && !newQueue.length) {
+                    customAlert(`Збережені звіти відправлено: ${sent}`);
+                } else if (needLogin) {
+                    await handleAuthFailure('Увійдіть за PIN, щоб надіслати збережені звіти — вони на місці.');
+                } else if (refused) {
+                    customAlert(`Сервер не прийняв ${refused} звіт(ів) із черги: ${lastMsg}\n\nЗвіти залишилися на пристрої.`);
+                }
+                } finally {
+                    syncingQueue = false;
                 }
             };
 
@@ -985,6 +1394,8 @@
             };
 
             const submitReport = async (section) => {
+                if (photoBusy > 0) { customAlert('Зачекайте, фото ще обробляються.'); return; }
+
                 const btn = document.getElementById('submitReportBtn');
                 const status = document.getElementById('submitStatus');
                 btn.disabled = true;
@@ -993,104 +1404,71 @@
                 status.textContent = 'Обробка даних...';
                 status.className = 'mt-2 text-sm text-blue-600 font-bold';
 
-                const sectionTitle = (section === 'start') ? 'Початок зміни' : 'Кінець зміни';
-                const items = Array.from(document.querySelectorAll(`#${section}ShiftSection .checklist-item`));
-                const total = items.length;
-                const completed = items.filter(i => i.classList.contains('completed')).length;
+                const payload = buildPayload(section);
+                const shortName = employeeSelect.value.split(' ')[1] || employeeSelect.value;
 
-                const now = new Date();
-                const dateStr = now.toLocaleDateString('uk-UA').replace(/\./g, '-');
-                const timeStr = now.toLocaleTimeString('uk-UA').replace(/:/g, '-');
-
-                const reportItems = items.map(item => {
-                    const uniqueId = item.id;
-                    const itemText = item.querySelector('.task-text').textContent.trim();
-                    const photoBase64 = currentPhotos[uniqueId] || null;
-                    const safeName = itemText.substring(0, 20).replace(/[^a-zа-я0-9]/gi, '_');
-                    const photoName = photoBase64 ? `${safeName}_${dateStr}_${timeStr}.jpg` : null;
-
-                    const configId = uniqueId.replace(`${section}-`, '');
-                    let itemCategory = 'Інше';
-                    checklistConfig.forEach(g => {
-                        if (g.items.some(i => i.id === configId)) itemCategory = g.title;
-                    });
-
-                    const isBad = item.querySelector('.selected-bad') !== null;
-
-                    return {
-                        text: itemText,
-                        completed: item.classList.contains('completed'),
-                        value: item.dataset.value || 'Н/Д',
-                        comment: item.querySelector('.comment-text').textContent.trim(),
-                        photoData: photoBase64,
-                        photoName: photoName,
-                        category: itemCategory,
-                        isBad: isBad
-                    };
-                });
-
-                const reportData = {
-                    date: new Date().toLocaleString('uk-UA'),
-                    time: new Date().toLocaleTimeString('uk-UA'),
-                    mechanic: employeeSelect.value, // Використовуємо те саме поле для імені заради сумісності
-                    role: "Майстер", 
-                    recipients: "Buznitskiy7@gmail.com,Dyndarnastia@gmail.com,olgagoncharukm@gmail.com,sashaalieva18@gmail.com",
-                    shiftStage: sectionTitle,
-                    summary: `Виконано ${completed} з ${total}`,
-                    items: reportItems
+                const reset = () => {
+                    btn.disabled = false;
+                    btn.textContent = 'Підтвердити та Відправити';
+                    status.classList.add('hidden');
                 };
-
-                if (!navigator.onLine) {
-                    saveReportOffline(reportData);
-                    clearSectionData(section);
-                    status.textContent = 'Збережено офлайн!';
+                const finish = (text, cls, alertText) => {
+                    status.textContent = text;
+                    status.className = 'mt-2 text-sm font-bold ' + cls;
                     setTimeout(() => {
                         document.getElementById('completionModal').style.display = 'none';
-                        btn.disabled = false;
-                        btn.textContent = 'Підтвердити та Відправити';
-                        status.classList.add('hidden');
-                        
-                        const mechanicName = employeeSelect.value.split(' ')[1] || employeeSelect.value;
-                        customAlert(`Відсутній інтернет. Звіт збережено локально!\n\n${mechanicName}, дякуємо за вашу роботу! Бажаємо хорошого робочого дня! 📋`);
+                        reset();
+                        if (alertText) customAlert(alertText);
                     }, 1000);
+                };
+                const queueIt = (why) => {
+                    if (saveReportOffline(payload)) {
+                        clearSectionData(section);
+                        finish('Збережено офлайн!', 'text-orange-600',
+                               `${why}\nЗвіт збережено на пристрої і піде сам, щойно з'явиться зв'язок.\n\n${shortName}, щиро дякуємо за ваш сумлінний труд! Бажаємо хорошого робочого дня! 🛠️`);
+                    } else {
+                        // сховище браузера переповнене — очищати форму НЕ МОЖНА
+                        reset();
+                        status.classList.remove('hidden');
+                        status.textContent = '❌ Не вистачає місця на пристрої';
+                        status.className = 'mt-2 text-sm text-red-600 font-bold';
+                        customAlert('Пам\'ять браузера переповнена, звіт не збережено.\n\nВідправте раніше збережені звіти (кнопка статусу мережі вгорі) або приберіть частину фото — і спробуйте ще раз. Заповнене нікуди не зникло.');
+                    }
+                };
+
+                if (!navigator.onLine) { queueIt('Відсутній інтернет.'); return; }
+                if (session && session.offline) { queueIt('Ви увійшли без зв\'язку.'); return; }
+
+                let res = null;
+                try {
+                    res = await api(Object.assign({ token: sessionToken() }, payload));
+                } catch (e) {
+                    console.error(e);
+                    queueIt('Не вдалося достукатися до сервера.');
                     return;
                 }
 
-                try {
-                    await fetch(GOOGLE_SCRIPT_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(reportData)
-                    });
-                    
-                    clearSectionData(section);
+                // ── сервер відповів; тепер ми ЗНАЄМО, що сталося зі звітом ──
+                if (res && (res.ok || res.duplicate)) {
+                    clearSectionData(section);          // очищаємо ТІЛЬКИ після підтвердження
+                    const warn = (res.warnings && res.warnings.length)
+                        ? '\n\nУвага: ' + res.warnings.join('; ') : '';
+                    finish('✅ Успішно! Звіт відправлено.', 'text-green-600',
+                           `Звіт успішно відправлено!${warn}\n\n${shortName}, щиро дякуємо за ваш сумлінний труд! Бажаємо хорошого робочого дня! 🛠️`);
+                    return;
+                }
 
-                    status.textContent = '✅ Успішно! Звіт відправлено.';
-                    status.className = 'mt-2 text-sm text-green-600 font-bold';
-                    setTimeout(() => {
-                        document.getElementById('completionModal').style.display = 'none';
-                        btn.disabled = false;
-                        btn.textContent = 'Підтвердити та Відправити';
-                        status.classList.add('hidden');
-                        
-                        const mechanicName = employeeSelect.value.split(' ')[1] || employeeSelect.value;
-                        customAlert(`Звіт успішно відправлено!\n\n${mechanicName}, дякуємо за вашу роботу! Бажаємо хорошого робочого дня! 📋`);
-                    }, 1000);
-                } catch (e) {
-                    console.error(e);
-                    saveReportOffline(reportData);
-                    clearSectionData(section);
-                    status.textContent = 'Збережено офлайн (помилка мережі).';
-                    setTimeout(() => {
-                        document.getElementById('completionModal').style.display = 'none';
-                        btn.disabled = false;
-                        btn.textContent = 'Підтвердити та Відправити';
-                        status.classList.add('hidden');
-                        
-                        const mechanicName = employeeSelect.value.split(' ')[1] || employeeSelect.value;
-                        customAlert(`Помилка мережі. Звіт збережено локально!\n\n${mechanicName}, дякуємо за вашу роботу! Бажаємо хорошого робочого дня! 📋`);
-                    }, 1000);
+                // Відмова сервера — черга не допоможе, дані лишаємо у формі
+                reset();
+                status.classList.remove('hidden');
+                status.textContent = '❌ ' + (res.message || res.error || 'Сервер відхилив звіт');
+                status.className = 'mt-2 text-sm text-red-600 font-bold';
+
+                if (res.error === 'AUTH') {
+                    await handleAuthFailure('Сесія завершилася. Увійдіть за PIN — заповнене нікуди не зникло.');
+                } else {
+                    customAlert('Звіт не прийнято: ' + (res.message || res.error || 'невідома помилка') +
+                                '\n\nЗаповнене залишилося у формі — виправте і спробуйте ще раз.');
                 }
             };
             
@@ -1098,12 +1476,19 @@
                 if(currentSection !== 'contacts') showCompletionModal(currentSection);
             });
 
-            // Init Employee List
-            if(employeeSelect) {
-                const employees = ["Гончарук Ольга", "Шута Олександра", "Заміна"];
-                employees.forEach(e => employeeSelect.add(new Option(e, e)));
-                employeeSelect.addEventListener('change', saveState);
-            }
+            // Прізвище майстра більше не обирається зі списку — його дає вхід за PIN.
+            // Змінити PIN із застосунку не можна: він живе в кадровій таблиці.
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) logoutBtn.addEventListener('click', async () => {
+                const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+                const warn = queue.length
+                    ? `\n\nУвага: ${queue.length} звіт(ів) ще не відправлено. Вони залишаться на пристрої до наступного входу.`
+                    : '';
+                if (await customConfirm('Вийти із застосунку?' + warn)) {
+                    dropSession();
+                    location.reload();
+                }
+            });
             
             const themeToggleBtn = document.getElementById('themeToggle');
             if(themeToggleBtn) {
@@ -1132,9 +1517,20 @@
             const contactsBtnHeader = document.getElementById('contactsBtnHeader');
             if(contactsBtnHeader) contactsBtnHeader.addEventListener('click', () => switchView('contacts'));
 
+            onSessionChange = applySession;
+            document.getElementById('authLoginBtn').addEventListener('click', doLogin);
+            document.getElementById('authPin').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') doLogin();
+            });
+
             loadState();
-            updateNetworkStatus(); 
+            updateNetworkStatus();
+
+            await bootAuth();      // тут застосунок чекає, доки не увійдуть за PIN
+            applySession();
+
             switchView('start');
+            processOfflineQueue();
         });
     </script>
 </body>
