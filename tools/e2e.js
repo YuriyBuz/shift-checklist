@@ -70,6 +70,7 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
   console.log('   report_id: ' + p.report_id + ' · дата: ' + p.business_date + ' · пунктів: ' + p.items.length);
   t('роль і стадія', p.role === 'Майстер' && p.stage === 'Початок зміни');
   t('автора визначив сервер', p._author === 'Шута Олександра Сергіівна');
+  t('клієнт імені автора не надсилає', p.user_name === undefined && p.user_id === undefined);
   t('усі пункти з item_id master.*', p.items.every(i => /^master\.(s|e)\d+-\d+$/.test(i.item_id)));
   t('ід збігаються з довідником',
     p.items.map(i => i.item_id).includes('master.s1-1') &&
