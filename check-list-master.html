@@ -169,6 +169,15 @@
             transition: background-color 0.3s ease;
         }
         .dark .error-highlight { background-color: rgba(239, 68, 68, 0.15) !important; }
+
+        /* Пункт 3: хто не на зміні за планшетом на вході */
+        .absence-btn { background:#dc2626; color:#fff; font-weight:700; font-size:0.85rem;
+            padding:0.35rem 0.7rem; border-radius:0.5rem; white-space:nowrap; margin-top:0.4rem; }
+        .absence-btn.blink { animation: absenceBlink 1s infinite; }
+        @keyframes absenceBlink {
+            0%, 100% { opacity:1; box-shadow:0 0 0 0 rgba(220,38,38,0.6); }
+            50% { opacity:0.45; box-shadow:0 0 0 6px rgba(220,38,38,0); }
+        }
     </style>
 </head>
 <body class="bg-slate-50 font-sans">
@@ -303,6 +312,9 @@
         // Вставлено ваше посилання на розгорнутий Google Apps Script:
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwF40NrWG2ijrDn5c-3TEsASL-fklpU-CnpigeQxs_Shxidt1xxf8wj4tYDzbMlxi-sHA/exec'; 
         
+        // Пункт, біля якого показуємо, хто не на зміні
+        const ATTENDANCE_ITEM = 's1-3';
+
         // Структура Майстра
         const checklistConfig = [
             // --- ПОЧАТОК ЗМІНИ ---
@@ -470,7 +482,7 @@
            і саме воно потрапляє у звіт. Підмінити автора неможливо —
            сервер бере ім'я з підтвердженої сесії, а не з запиту.          */
 
-        const APP_VERSION    = 'master-client-2026-08-25';
+        const APP_VERSION    = 'master-client-2026-10-27';
         const CONFIG_VERSION = 'client-2026-08-25';
         const SESSION_KEY    = 'masterSessionV1';
         const DEVICE_KEY     = 'masterDeviceIdV1';
@@ -885,6 +897,53 @@
             /** Токен онлайн-сесії. Офлайн-вхід токена не має — звіт чекає в черзі. */
             const sessionToken = () => (session && !session.offline && session.token) ? session.token : '';
 
+            /* ── Пункт 3 «присутність і стан здоров'я»: хто не на зміні ──
+               Сервер читає вкладку «🌟 СЬОГОДНІ» таблиці реєстрації на вході. Якщо хтось
+               не зареєструвався (прогул) або прийшов «Поза графіком» — біля пункту блимає
+               червона кнопка з кількістю; натискання показує список. Відпустки й лікарняні
+               показуємо в списку, але тривогу через них не здіймаємо. */
+            let attendance = null, attendanceSeen = false;
+            const attendanceEsc = (v) => String(v == null ? '' : v)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const attendanceCount = () => attendance ? attendance.absent.length + attendance.offSchedule.length : 0;
+            const paintAbsenceBtn = () => {
+                const btn = document.querySelector(`#start-${ATTENDANCE_ITEM} .absence-btn`);
+                if (!btn) return;
+                const n = attendanceCount();
+                btn.classList.toggle('hidden', !n);
+                btn.classList.toggle('blink', !!n && !attendanceSeen);
+                btn.textContent = `👥 Не на зміні: ${n}`;
+            };
+            const refreshAttendance = async () => {
+                if (!sessionToken()) return;
+                try {
+                    const r = await api({ action: 'attendance', token: sessionToken() });
+                    if (r && r.ok) {
+                        const before = attendance ? JSON.stringify([attendance.absent, attendance.offSchedule]) : '';
+                        attendance = r;
+                        if (before !== JSON.stringify([r.absent, r.offSchedule])) attendanceSeen = false;   // з'явились нові — знову блимає
+                        paintAbsenceBtn();
+                    }
+                } catch (e) { /* без зв'язку — лишаємо останній відомий список */ }
+            };
+            const showAbsence = () => {
+                attendanceSeen = true; paintAbsenceBtn();
+                if (!attendance) return;
+                const li = (x, extra) => `<li class="py-1 border-b border-gray-100 dark:border-slate-700"><b>${attendanceEsc(x.name)}</b>` +
+                    `<span class="text-sm text-gray-500"> · ${attendanceEsc(x.position)}${extra ? ' · ' + attendanceEsc(extra) : ''}</span></li>`;
+                const block = (title, list, cls, extra) => list.length
+                    ? `<p class="font-bold mt-3 mb-1 ${cls}">${title} (${list.length})</p><ul class="list-none pl-0">${list.map(x => li(x, extra(x))).join('')}</ul>` : '';
+                const html = `<div class="text-left text-slate-800 dark:text-slate-200">
+                    <h4 class="font-bold text-lg mb-1">👥 Хто не на зміні</h4>
+                    <p class="text-xs text-gray-500 mb-2">За реєстрацією на вході, вкладка «🌟 СЬОГОДНІ»${attendance.report_at ? ', звіт на ' + attendanceEsc(attendance.report_at) : ''}${attendance.fresh ? '' : ' — <b class="text-red-600">звіт не сьогоднішній</b>'}</p>
+                    ${block('🔴 Відсутні на зміні', attendance.absent, 'text-red-600', x => x.status)}
+                    ${block('🟠 Поза графіком', attendance.offSchedule, 'text-orange-600', x => x.start ? 'прийшов о ' + x.start : '')}
+                    ${block('⚪ Відпустка / лікарняний', attendance.legal, 'text-gray-500', x => x.status)}
+                    ${attendanceCount() ? '' : '<p class="mt-2 text-emerald-600 font-bold">Усі, хто мав вийти, на зміні.</p>'}
+                </div>`;
+                showCustomDialog({ message: html, html: true, okText: 'Зрозуміло' });
+            };
+
             /** Хто увійшов — той і підписує звіт. Список прізвищ більше не потрібен. */
             const applySession = () => {
                 if (!employeeSelect || !session || !session.user) return;
@@ -976,8 +1035,9 @@
                         li.innerHTML = `
                             <div class="w-full">
                                 <div class="flex justify-between items-start">
-                                    <div class="flex flex-1 items-center mr-2">
+                                    <div class="flex flex-1 items-center mr-2 ${item.id === ATTENDANCE_ITEM ? 'flex-wrap gap-x-2' : ''}">
                                         <span class="task-text font-medium text-lg leading-tight">${item.text}</span>
+                                        ${item.id === ATTENDANCE_ITEM ? '<button type="button" class="absence-btn hidden" title="Хто не на зміні за реєстрацією на вході"></button>' : ''}
                                     </div>
                                     <div class="flex items-center gap-1 photo-controls">
                                         <button class="comment-btn p-2 rounded-lg border border-gray-300 dark:border-slate-600 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors h-10 w-10 flex items-center justify-center flex-shrink-0" title="Додати коментар">
@@ -1374,6 +1434,9 @@
                     checklistContainer.classList.remove('hidden');
                     renderChecklist(view);
                     restoreDOMState();
+                    const absBtn = document.querySelector(`#start-${ATTENDANCE_ITEM} .absence-btn`);
+                    if (absBtn) absBtn.addEventListener('click', (e) => { e.stopPropagation(); showAbsence(); refreshAttendance(); });
+                    paintAbsenceBtn();
                     if(view === 'start') document.getElementById('startShiftBtn').classList.add('active');
                     else document.getElementById('endShiftBtn').classList.add('active');
                     updateProgress();
@@ -1598,7 +1661,7 @@
                справжнього токена сервер однаково відмовить. */
             onSessionChange = () => {
                 applySession();
-                if (sessionToken()) processOfflineQueue();
+                if (sessionToken()) { processOfflineQueue(); refreshAttendance(); }
             };
             document.getElementById('authLoginBtn').addEventListener('click', doLogin);
             document.getElementById('authPin').addEventListener('keydown', (e) => {
@@ -1613,6 +1676,10 @@
 
             switchView('start');
             processOfflineQueue();
+            refreshAttendance();
+            // люди реєструються протягом ранку — оновлюємо список кожні 5 хвилин
+            setInterval(() => { if (!document.hidden) refreshAttendance(); }, 5 * 60 * 1000);
+            document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshAttendance(); });
         });
     </script>
 </body>
