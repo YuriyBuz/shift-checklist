@@ -10,6 +10,7 @@ const CAN = {
   admin:  { mech: true,  master: true,  email: true  },
   master: { mech: false, master: true,  email: true  }
 };
+let attendanceAll = false;
 const PEOPLE = [
   { pin: '8294', id: 'EMP-0032', user_id: 'U-006', name: 'Шута Олександра Сергіівна',
     roles: ['shift.master'], can: CAN.master },
@@ -62,6 +63,11 @@ const srv = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/html' });
     return res.end('<html>Sign in with Google</html>');
   }
+  // список «хто не на зміні»: /attendance?n=0 — усі на місці, без параметра — 2 прогули + 1 поза графіком
+  if (req.method === 'GET' && req.url.startsWith('/attendance')) {
+    attendanceAll = req.url.indexOf('n=0') > -1;
+    res.writeHead(200, cors); return res.end('ok');
+  }
   if (req.method === 'GET' && req.url.startsWith('/reset')) {
     received.length = 0; fired = {};
     res.writeHead(200, cors); return res.end('ok');
@@ -91,6 +97,18 @@ const srv = http.createServer((req, res) => {
                  'щоб вам призначили власний PIN у кадровій таблиці.' });
       return json({ ok: true, token: tokenFor(hits[0], p.deviceId),
                     expires_at: Date.now() + 12 * 3600 * 1000, user: pub(hits[0]) });
+    }
+    if (act === 'attendance') {
+      const u = bySession(p.token, p.deviceId);
+      if (!u) return json({ ok: false, error: 'AUTH', message: 'Сесію завершено. Увійдіть за PIN.' });
+      if (!u.can.master) return json({ ok: false, error: 'FORBIDDEN' });
+      return json(attendanceAll
+        ? { ok: true, report_at: '27.10.2026 08:31', fresh: true, present: 22, absent: [], offSchedule: [], legal: [] }
+        : { ok: true, report_at: '27.10.2026 08:31', fresh: true, present: 22,
+            absent: [{ name: 'Козило Василь Вячеславович', position: 'Вантажник', status: "Не з'явився (Прогул)" },
+                     { name: 'Кораблін Дмитро', position: 'Вантажник', status: "Не з'явився (Прогул)" }],
+            offSchedule: [{ name: 'Загура Іван Борисович', position: 'варник соуса', status: '🟢 В процесі', start: '8:32' }],
+            legal: [{ name: 'Гончарук Ольга Михайлівна', position: 'Майстер зміни', status: 'Легально відсутній (Відпустка)' }] });
     }
     if (act === 'whoami') {
       const u = bySession(p.token, p.deviceId);

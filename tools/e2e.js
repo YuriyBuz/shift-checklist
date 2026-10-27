@@ -1,7 +1,7 @@
 /* Клієнт майстра в браузері: вхід за PIN, ролі, склад payload, черга. */
 const { chromium } = require('playwright');
 const BASE = 'http://127.0.0.1:8732';
-const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXE = process.env.CHROME || '/opt/pw-browsers/chromium';  // браузер пісочниці
 let fails = 0;
 const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails++; };
 
@@ -54,6 +54,32 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
     !(await page.evaluate(() => JSON.stringify(localStorage).includes('8294'))));
   t('офлайн-перевірник збережено',
     await page.evaluate(() => !!localStorage.getItem('masterOfflineUnlockV1')));
+
+  console.log('\n── пункт 3: хто не на зміні ──');
+  const absBtn = page.locator('#start-s1-3 .absence-btn');
+  await page.waitForTimeout(500);
+  t('кнопка біля пункту 3 видна', await absBtn.isVisible());
+  t('  червона, блимає і каже скільки', (await absBtn.textContent()).includes('Не на зміні: 3') &&
+    await absBtn.evaluate(e => e.classList.contains('blink') && getComputedStyle(e).animationName === 'absenceBlink'));
+  t('  в інших пунктах такої кнопки немає', (await page.locator('.absence-btn').count()) === 1);
+  await absBtn.click(); await page.waitForTimeout(400);
+  const absTxt = await dlgText();
+  t('натискання показує список: прогули, поза графіком, відпустка',
+    /Козило Василь/.test(absTxt) && /Кораблін Дмитро/.test(absTxt) && /Поза графіком \(1\)/.test(absTxt) &&
+    /Загура Іван/.test(absTxt) && /прийшов о 8:32/.test(absTxt) && /Відпустка/.test(absTxt) && /звіт на 27\.10\.2026 08:31/.test(absTxt));
+  await closeDlg();
+  t('після перегляду не блимає, але лишається червоною', !(await absBtn.evaluate(e => e.classList.contains('blink'))) && await absBtn.isVisible());
+  t('натискання не ставить відповідь пункту', !(await page.locator('#start-s1-3').evaluate(e => e.classList.contains('completed'))));
+  await fetch(BASE + '/attendance?n=0');
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); await page.waitForTimeout(600);
+  t('усі зареєструвались — кнопка зникає', !(await absBtn.isVisible()));
+  await fetch(BASE + '/attendance');
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); await page.waitForTimeout(600);
+  t('знову хтось відсутній — кнопка блимає знову', await absBtn.evaluate(e => e.classList.contains('blink')));
+  await page.click('#endShiftBtn'); await page.waitForTimeout(300);
+  t('на «Кінці зміни» кнопки немає', (await page.locator('.absence-bt').count()) === 0 && (await page.locator('.absence-btn').count()) === 0);
+  await page.click('#startShiftBtn'); await page.waitForTimeout(300);
+  t('повернулись на «Початок» — кнопка на місці', await absBtn.isVisible());
 
   console.log('\n── відправка ──');
   await fill();
