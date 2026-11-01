@@ -482,7 +482,7 @@
            і саме воно потрапляє у звіт. Підмінити автора неможливо —
            сервер бере ім'я з підтвердженої сесії, а не з запиту.          */
 
-        const APP_VERSION    = 'master-client-2026-10-27';
+        const APP_VERSION    = 'master-client-2026-11-01';
         const CONFIG_VERSION = 'client-2026-08-25';
         const SESSION_KEY    = 'masterSessionV1';
         const DEVICE_KEY     = 'masterDeviceIdV1';
@@ -888,7 +888,8 @@
                             value: el.dataset.value || '',
                             values: [],
                             comment: el.querySelector('.comment-text').textContent.trim(),
-                            photoData: currentPhotos[el.id] || null
+                            photoData: currentPhotos[el.id] || null,
+                            answered_at: el.dataset.at ? new Date(Number(el.dataset.at)).toISOString() : ''
                         };
                     })
                 };
@@ -905,7 +906,12 @@
             let attendance = null, attendanceSeen = false;
             const attendanceEsc = (v) => String(v == null ? '' : v)
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            const attendanceCount = () => attendance ? attendance.absent.length + attendance.offSchedule.length : 0;
+            // «Поза графіком» у ВСІХ, хто прийшов, означає, що в таблиці реєстрації немає графіка
+            // на сьогодні (так було 01.11), а не що всі прийшли не в свою зміну. Тоді їх не рахуємо.
+            const scheduleMissing = () => !!attendance && attendance.present > 3 &&
+                attendance.offSchedule.length >= attendance.present;
+            const attendanceCount = () => attendance
+                ? attendance.absent.length + (scheduleMissing() ? 0 : attendance.offSchedule.length) : 0;
             const paintAbsenceBtn = () => {
                 const btn = document.querySelector(`#start-${ATTENDANCE_ITEM} .absence-btn`);
                 if (!btn) return;
@@ -937,7 +943,9 @@
                     <h4 class="font-bold text-lg mb-1">👥 Хто не на зміні</h4>
                     <p class="text-xs text-gray-500 mb-2">За реєстрацією на вході, вкладка «🌟 СЬОГОДНІ»${attendance.report_at ? ', звіт на ' + attendanceEsc(attendance.report_at) : ''}${attendance.fresh ? '' : ' — <b class="text-red-600">звіт не сьогоднішній</b>'}</p>
                     ${block('🔴 Відсутні на зміні', attendance.absent, 'text-red-600', x => x.status)}
-                    ${block('🟠 Поза графіком', attendance.offSchedule, 'text-orange-600', x => x.start ? 'прийшов о ' + x.start : '')}
+                    ${scheduleMissing()
+                        ? `<p class="mt-3 text-sm text-orange-600"><b>⚠️ Графік на сьогодні не завантажено:</b> у таблиці реєстрації «Поза графіком» стоїть у всіх ${attendance.present}, хто прийшов. Перевірити, хто вийшов не у свою зміну, неможливо.</p>`
+                        : block('🟠 Поза графіком', attendance.offSchedule, 'text-orange-600', x => x.start ? 'прийшов о ' + x.start : '')}
                     ${block('⚪ Відпустка / лікарняний', attendance.legal, 'text-gray-500', x => x.status)}
                     ${attendanceCount() ? '' : '<p class="mt-2 text-emerald-600 font-bold">Усі, хто мав вийти, на зміні.</p>'}
                 </div>`;
@@ -1161,6 +1169,7 @@
                                 item.classList.add('completed');
                                 item.classList.remove('error-highlight');
                                 item.dataset.value = btn.dataset.val;
+                                item.dataset.at = String(Date.now());      // справжній час натискання — для листа
                                 item.querySelector('.print-value').textContent = `Обрано: ${btn.dataset.val}`;
                                 saveState();
                                 updateProgress();
@@ -1201,20 +1210,26 @@
                 cancelCommentBtn.addEventListener('click', () => commentModal.style.display = 'none');
             }
 
+            /* На екрані лише одна вкладка. Раніше збереження писало тільки її і стирало
+               іншу, а повернення відновлювало знімок на момент відкриття сторінки.
+               Тепер appState — живий стан обох вкладок. */
             const saveState = () => {
-                const state = {
-                    checklist: {},
-                    employee: employeeSelect.value,
-                    theme: document.body.classList.contains('dark') ? 'dark' : 'light'
-                };
+                const checklist = Object.assign({}, appState.checklist || {});
                 document.querySelectorAll('.checklist-item').forEach(item => {
-                    state.checklist[item.id] = {
+                    checklist[item.id] = {
                         completed: item.classList.contains('completed'),
                         value: item.dataset.value || '',
-                        comment: item.querySelector('.comment-text').textContent
+                        comment: item.querySelector('.comment-text').textContent,
+                        at: item.dataset.at || ''
                     };
                 });
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+                appState = Object.assign({}, appState, {
+                    checklist: checklist,
+                    employee: employeeSelect.value,
+                    theme: document.body.classList.contains('dark') ? 'dark' : 'light'
+                });
+                try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appState)); }
+                catch (e) { console.warn('стан не вліз у сховище', e); }
             };
 
             const loadState = () => {
@@ -1237,6 +1252,7 @@
                     if(el) {
                         const data = appState.checklist[id];
                         if (data.completed) el.classList.add('completed');
+                        if (data.at) el.dataset.at = data.at;
                         if (data.value) {
                             el.dataset.value = data.value;
                             if(el.dataset.type === 'binary') {
@@ -1276,6 +1292,7 @@
                 items.forEach(item => {
                     item.classList.remove('completed');
                     delete item.dataset.value;
+                    delete item.dataset.at;
                     item.querySelector('.comment-text').textContent = '';
                     item.querySelector('.comment-text').classList.add('hidden');
                     item.querySelector('.print-value').textContent = '';

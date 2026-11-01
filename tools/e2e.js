@@ -80,6 +80,26 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
   t('на «Кінці зміни» кнопки немає', (await page.locator('.absence-bt').count()) === 0 && (await page.locator('.absence-btn').count()) === 0);
   await page.click('#startShiftBtn'); await page.waitForTimeout(300);
   t('повернулись на «Початок» — кнопка на місці', await absBtn.isVisible());
+  await fetch(BASE + '/attendance?noschedule');
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); await page.waitForTimeout(600);
+  t('графіка немає («Поза графіком» у всіх 18) — рахує лише прогул', (await absBtn.textContent()).includes('Не на зміні: 1'));
+  await absBtn.click(); await page.waitForTimeout(400);
+  const nsTxt = await dlgText();
+  t('  у списку — попередження про графік, а не 18 імен', /Графік на сьогодні не завантажено/.test(nsTxt) &&
+    !/Працівник 5/.test(nsTxt) && /Козило/.test(nsTxt));
+  await closeDlg();
+  await fetch(BASE + '/attendance');
+
+  console.log('\n── час натискання і перемикання вкладок ──');
+  await page.locator('#start-s1-1 .option-btn').first().click();
+  await page.locator('#start-s1-2 .option-btn').first().click();
+  await page.click('#endShiftBtn'); await page.waitForTimeout(300);
+  await page.locator('#endShiftSection .checklist-item .option-btn').first().click();
+  await page.click('#startShiftBtn'); await page.waitForTimeout(300);
+  t('відповіді «Початку» пережили перехід на «Кінець» і назад',
+    await page.locator('#start-s1-1').evaluate(e => e.classList.contains('completed')) &&
+    await page.locator('#start-s1-2').evaluate(e => e.classList.contains('completed')));
+  t('  і час натискання теж', await page.locator('#start-s1-1').evaluate(e => !!e.dataset.at));
 
   console.log('\n── відправка ──');
   await fill();
@@ -93,6 +113,8 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
   const got = await (await fetch(BASE + '/received')).json();
   t('сервер отримав рівно один звіт', got.length === 1);
   const p = got[0];
+  t('кожна відповідь майстра має час натискання (ISO, не старший 15 хв)', p.items.filter(i => i.value)
+    .every(i => /^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(i.answered_at) && Math.abs(Date.parse(i.answered_at) - Date.now()) < 15 * 60000));
   console.log('   report_id: ' + p.report_id + ' · дата: ' + p.business_date + ' · пунктів: ' + p.items.length);
   t('роль і стадія', p.role === 'Майстер' && p.stage === 'Початок зміни');
   t('автора визначив сервер', p._author === 'Шута Олександра Сергіівна');

@@ -10,7 +10,7 @@ const CAN = {
   admin:  { mech: true,  master: true,  email: true  },
   master: { mech: false, master: true,  email: true  }
 };
-let attendanceAll = false;
+let attendanceAll = false, attendanceNoSchedule = false;
 const PEOPLE = [
   { pin: '8294', id: 'EMP-0032', user_id: 'U-006', name: 'Шута Олександра Сергіівна',
     roles: ['shift.master'], can: CAN.master },
@@ -66,6 +66,7 @@ const srv = http.createServer((req, res) => {
   // список «хто не на зміні»: /attendance?n=0 — усі на місці, без параметра — 2 прогули + 1 поза графіком
   if (req.method === 'GET' && req.url.startsWith('/attendance')) {
     attendanceAll = req.url.indexOf('n=0') > -1;
+    attendanceNoSchedule = req.url.indexOf('noschedule') > -1;   // як 01.11: «Поза графіком» у всіх
     res.writeHead(200, cors); return res.end('ok');
   }
   if (req.method === 'GET' && req.url.startsWith('/reset')) {
@@ -102,6 +103,10 @@ const srv = http.createServer((req, res) => {
       const u = bySession(p.token, p.deviceId);
       if (!u) return json({ ok: false, error: 'AUTH', message: 'Сесію завершено. Увійдіть за PIN.' });
       if (!u.can.master) return json({ ok: false, error: 'FORBIDDEN' });
+      if (attendanceNoSchedule) return json({ ok: true, report_at: '01.11.2026 09:01', fresh: true, present: 18,
+        absent: [{ name: 'Козило Василь Вячеславович', position: 'Вантажник', status: "Не з'явився (Прогул)" }],
+        offSchedule: Array.from({ length: 18 }, (_, i) => ({ name: 'Працівник ' + (i + 1), position: 'Працівник', status: '🟢 В процесі', start: '7:5' + (i % 10) })),
+        legal: [{ name: 'Король Юрій Валерійович', position: 'оператор', status: 'Легально відсутній (Відпустка)' }] });
       return json(attendanceAll
         ? { ok: true, report_at: '27.10.2026 08:31', fresh: true, present: 22, absent: [], offSchedule: [], legal: [] }
         : { ok: true, report_at: '27.10.2026 08:31', fresh: true, present: 22,
