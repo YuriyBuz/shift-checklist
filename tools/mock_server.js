@@ -41,6 +41,14 @@ const srv = http.createServer((req, res) => {
   const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' };
   if (req.method === 'OPTIONS') { res.writeHead(204, cors); return res.end(); }
 
+  // сторінка графіка порталу (schedule.html) з тим самим підміненим сервером
+  if (req.method === 'GET' && req.url.startsWith('/schedule')) {
+    const html = fs.readFileSync(__dirname + '/../schedule.html', 'utf8')
+      .replace(/const GOOGLE_SCRIPT_URL = '[^']*'/, `const GOOGLE_SCRIPT_URL = 'http://127.0.0.1:${PORT}/exec'`)
+      .replace('<style>', '<style>.hidden{display:none}');
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    return res.end(html);
+  }
   if (req.method === 'GET' && req.url.startsWith('/app')) {
     const html = fs.readFileSync(SRC, 'utf8')
       .replace(/const GOOGLE_SCRIPT_URL = '[^']*'/, `const GOOGLE_SCRIPT_URL = 'http://127.0.0.1:${PORT}/exec'`)
@@ -98,6 +106,19 @@ const srv = http.createServer((req, res) => {
                  'щоб вам призначили власний PIN у кадровій таблиці.' });
       return json({ ok: true, token: tokenFor(hits[0], p.deviceId),
                     expires_at: Date.now() + 12 * 3600 * 1000, user: pub(hits[0]) });
+    }
+    if (act === 'getSchedule') {
+      const u = bySession(p.token, p.deviceId);
+      if (!u) return json({ ok: false, error: 'AUTH', message: 'Сесію завершено. Увійдіть за PIN.' });
+      if (!u.can.master) return json({ ok: false, error: 'FORBIDDEN' });
+      const months = ['Жовтень 2026', 'Листопад 2026'];
+      const month = months.indexOf(p.monthYear) > -1 ? p.monthYear : null;
+      if (!month) return json({ ok: false, error: 'NO_MONTH', message: 'Графіка за «' + p.monthYear + '» немає', months, month: p.monthYear });
+      const days = month === 'Жовтень 2026' ? 31 : 30;
+      return json({ ok: true, month, days, months, rows: [
+        { name: 'Рашидов Талех Ядулла огли', position: 'Оператор котельні', group: 0, schedule: [{ day: 1, dVal: '1', nVal: '2' }] },
+        { name: 'Гора Андрій Олександрович', position: 'механік зміни', group: 1, schedule: [{ day: 1, dVal: '1', nVal: '' }, { day: 2, dVal: '1', nVal: '' }] },
+        { name: 'Садиріна Ольга Анатоліївна', position: 'варник соуса', group: 2, schedule: [{ day: 15, dVal: 'В', nVal: '' }] }] });
     }
     if (act === 'attendance') {
       const u = bySession(p.token, p.deviceId);

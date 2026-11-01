@@ -176,6 +176,22 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
   await send(); await closeDlg();
   t('звіт нарешті прийнято', (await (await fetch(BASE + '/received')).json()).length === 1);
 
+  console.log('\n── портал: графік роботи (лише перегляд) ──');
+  await page.goto(BASE + '/schedule.html'); await page.waitForTimeout(1200);
+  t('графік показано з тим самим входом за PIN', (await page.locator('#sched-body tr').count()) === 3);
+  t('  1-го в Рашидова «1 / 2 (н)»', (await page.locator('#sched-body tr').first().locator('td').nth(1).textContent()).trim() === '1 / 2 (н)');
+  t('  відпустка «В» жовта', await page.locator('#sched-body tr').nth(2).locator('td').nth(15).evaluate(e => e.className.includes('bg-amber-100')));
+  t('  групи посад розділені товстою лінією', await page.locator('#sched-body tr').first().evaluate(e => e.className.includes('border-b-[4px]')));
+  t('  місяці зі списку сервера', (await page.locator('#month option').allTextContents()).join() === 'Жовтень 2026,Листопад 2026');
+  t('  нічого не можна редагувати: ні полів, ні кнопок у таблиці',
+    (await page.locator('#sched input, #sched button, #sched select, [contenteditable]').count()) === 0);
+  await page.selectOption('#month', 'Жовтень 2026'); await page.waitForTimeout(800);
+  t('інший місяць — 31 день', (await page.locator('#sched-head th').count()) === 1 + 31 + 1);
+  await page.evaluate(() => localStorage.removeItem('masterSessionV1'));
+  await page.reload(); await page.waitForTimeout(800);
+  t('без входу — пропонує увійти через чек-лист', /увійдіть за PIN/.test(await page.locator('#msg').textContent()) &&
+    (await page.locator('#sched-body tr').count()) === 0);
+
   if (errors.length) { console.log('\n⚠️ помилки JS:'); errors.forEach(e => console.log('   ' + e)); fails += errors.length; }
   await browser.close();
   console.log('\n' + (fails ? '❌ ПОМИЛОК: ' + fails : '✅ Усі перевірки пройдено'));

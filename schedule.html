@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Графік роботи | Портал Майстра</title>
+    <meta name="theme-color" content="#10b981">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
+        /* Таблиця сама є областю прокрутки: шапка з датами і колонка ПІБ прилипають */
+        #sched-wrap { overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+            max-height: calc(100dvh - 150px); }
+        #sched-wrap thead th { position: sticky; top: 0; z-index: 35; }
+        #sched-wrap thead th.corner { left: 0; z-index: 45; }
+        #sched-wrap td.name-cell { position: sticky; left: 0; z-index: 30; }
+        .today-col { box-shadow: inset 2px 0 0 #059669, inset -2px 0 0 #059669; }
+    </style>
+</head>
+<body class="font-sans text-slate-800">
+    <!-- Перегляд графіка для майстра. Лише читання: змінювати графік можна тільки в адмінпорталі. -->
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 py-3 flex flex-wrap items-center gap-3">
+            <a href="index.html" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 font-semibold text-sm">← Назад</a>
+            <h1 class="text-lg sm:text-xl font-bold text-emerald-700">Графік роботи</h1>
+            <select id="month" class="ml-auto px-3 py-2 rounded-xl border border-slate-300 bg-white font-semibold text-sm"></select>
+            <button id="reload" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm" title="Оновити">⟳</button>
+        </div>
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 pb-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+            <span><span class="inline-block w-3 h-3 rounded bg-emerald-100 border border-emerald-300 align-middle"></span> 1, 2 — зміна</span>
+            <span><span class="inline-block w-3 h-3 rounded bg-blue-100 border border-blue-300 align-middle"></span> 3</span>
+            <span><span class="inline-block w-3 h-3 rounded bg-red-100 border border-red-300 align-middle"></span> Л — лікарняний</span>
+            <span><span class="inline-block w-3 h-3 rounded bg-amber-100 border border-amber-300 align-middle"></span> В — відпустка</span>
+            <span>(н) — ніч</span>
+            <span class="text-slate-400">Лише перегляд</span>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-0 sm:px-6 py-3">
+        <div id="msg" class="hidden mx-3 sm:mx-0 mb-3 p-4 rounded-xl text-sm"></div>
+        <div id="sched-wrap" class="bg-white sm:rounded-2xl border border-slate-200 shadow-sm">
+            <table class="border-collapse text-slate-800" id="sched">
+                <thead id="sched-head"></thead>
+                <tbody id="sched-body"></tbody>
+            </table>
+        </div>
+    </main>
+
+<script>
+    // той самий сервер і той самий вхід за PIN, що й у чек-листі майстра
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwF40NrWG2ijrDn5c-3TEsASL-fklpU-CnpigeQxs_Shxidt1xxf8wj4tYDzbMlxi-sHA/exec';
+    const SESSION_KEY = 'masterSessionV1';
+    const DEVICE_KEY  = 'masterDeviceIdV1';
+    const MONTHS = ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень',
+                    'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'];
+    const DOW = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+    const cache = {};
+
+    const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const session = () => {
+        try { const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+              return (s && s.token && !s.offline && s.expiresAt > Date.now()) ? s : null; } catch (e) { return null; }
+    };
+    const kyivNow = () => {
+        const p = {}; new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Kyiv', year: 'numeric', month: 'numeric', day: 'numeric' })
+            .formatToParts(new Date()).forEach(x => p[x.type] = x.value);
+        return { y: Number(p.year), m: Number(p.month) - 1, d: Number(p.day) };
+    };
+    const showMsg = (html, cls) => { const m = document.getElementById('msg');
+        m.innerHTML = html; m.className = 'mx-3 sm:mx-0 mb-3 p-4 rounded-xl text-sm ' + (cls || 'bg-slate-100'); };
+    const hideMsg = () => document.getElementById('msg').classList.add('hidden');
+
+    // кольори груп — як у «Повному графіку» адмінпорталу
+    const posColor = (pos) => {
+        const p = String(pos).toLowerCase();
+        if (p.includes('головний інженер') || p.includes('механік')) return 'bg-[#fcd34d] text-yellow-900';
+        if (p.includes('варник')) return 'bg-[#fbcfe8] text-pink-900';
+        if (p.includes('контролер')) return 'bg-[#e879f9] text-purple-900';
+        if (p.includes('майстер')) return 'bg-[#86efac] text-green-900';
+        if (p.includes('оператор-налагоджувальник')) return 'bg-[#c4b5fd] text-fuchsia-900';
+        if (p.includes('оператор')) return 'bg-[#bae6fd] text-indigo-900';
+        if (p.includes('вантажник')) return 'bg-[#d97706] text-white';
+        if (p.includes('працівник')) return 'bg-[#f472b6] text-white';
+        return 'bg-white text-slate-800';
+    };
+    const cellColor = (v) => {
+        const s = String(v).toLowerCase();
+        if (s.includes('1') || s.includes('2')) return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+        if (s.includes('3') || s.includes('з')) return 'bg-blue-100 text-blue-800 border-blue-300';
+        if (s.includes('л')) return 'bg-red-100 text-red-800 border-red-300';
+        if (s.includes('в')) return 'bg-amber-100 text-amber-800 border-amber-300';
+        return '';
+    };
+
+    const render = (data) => {
+        const mi = MONTHS.indexOf(data.month.split(' ')[0]), yr = Number(data.month.split(' ')[1]);
+        const now = kyivNow(), today = (now.y === yr && now.m === mi) ? now.d : -1;
+        let head = '<tr><th class="corner px-2 py-1 bg-slate-100 text-[10px] text-left min-w-[120px]">ПІБ працівника</th>';
+        for (let d = 1; d <= data.days; d++) {
+            const w = new Date(yr, mi, d).getDay();
+            head += `<th class="px-0 py-1 text-center border-l border-slate-300 min-w-[30px] bg-slate-100 ${d === today ? 'today-col bg-emerald-50' : ''}">` +
+                `<div class="text-[11px] font-black">${d}</div><div class="text-[9px] ${w === 0 || w === 6 ? 'text-red-500' : 'text-slate-500'}">${DOW[w]}</div></th>`;
+        }
+        head += '<th class="px-1 py-1 text-center border-l border-slate-300 bg-slate-100 text-[10px]">Змін</th></tr>';
+        document.getElementById('sched-head').innerHTML = head;
+
+        document.getElementById('sched-body').innerHTML = data.rows.map((emp, i) => {
+            const last = i === data.rows.length - 1 || data.rows[i + 1].group !== emp.group;
+            const map = {}; emp.schedule.forEach(s => map[s.day] = s);
+            let shifts = 0;
+            let row = `<tr class="${last ? 'border-b-[4px] border-b-slate-400' : 'border-b border-b-slate-200'}">` +
+                `<td class="name-cell px-2 py-0.5 border-r-2 ${posColor(emp.position)}" title="${esc(emp.name + ' · ' + emp.position)}">` +
+                `<div class="font-bold text-[11px] whitespace-nowrap">${esc(emp.name.split(/\s+/).slice(0, 2).join(' '))}</div></td>`;
+            for (let d = 1; d <= data.days; d++) {
+                const x = map[d] || {};
+                let v = x.dVal || '';
+                if (x.nVal) v = v ? v + ' / ' + x.nVal + ' (н)' : x.nVal + ' (н)';
+                shifts += (String(v).toLowerCase().match(/(?:^|\s|\/)(1|2|3|з)(?:\s|\/|$|\()/g) || []).length;
+                row += `<td class="p-0 border-l border-slate-300 ${cellColor(v)} ${d === today ? 'today-col' : ''}">` +
+                    `<div class="flex items-center justify-center h-6 w-full text-[10px] font-bold leading-none tracking-tighter">${esc(v)}</div></td>`;
+            }
+            return row + `<td class="text-center font-black text-[11px] border-l border-slate-300 bg-slate-50">${shifts || ''}</td></tr>`;
+        }).join('');
+        // прокрутити до сьогоднішнього дня
+        const t = document.querySelector('#sched-head th.today-col');
+        if (t) document.getElementById('sched-wrap').scrollLeft = Math.max(0, t.offsetLeft - 160);
+    };
+
+    const fillMonths = (months, current) => {
+        const sel = document.getElementById('month');
+        const list = months && months.length ? months : [current];
+        sel.innerHTML = list.map(m => `<option ${m === current ? 'selected' : ''}>${esc(m)}</option>`).join('');
+    };
+
+    const load = async (month, force) => {
+        const s = session();
+        if (!s) {
+            showMsg('Щоб переглянути графік, увійдіть за PIN у <a class="underline font-bold text-emerald-700" href="check-list-master.html">Чек-листі Майстра</a> і поверніться сюди.', 'bg-amber-50 text-amber-900');
+            return;
+        }
+        if (!force && cache[month]) { hideMsg(); render(cache[month]); return; }
+        showMsg('Завантаження графіка…');
+        let r = null;
+        try {
+            const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', redirect: 'follow',
+                body: JSON.stringify({ action: 'getSchedule', monthYear: month, token: s.token,
+                                       deviceId: localStorage.getItem(DEVICE_KEY) || '' }) });
+            r = await res.json();
+        } catch (e) { showMsg('Немає зв\'язку з сервером. Спробуйте ще раз.', 'bg-red-50 text-red-800'); return; }
+        if (r && r.months) fillMonths(r.months, r.month || month);
+        if (r && r.ok) { cache[r.month] = r; hideMsg(); render(r); return; }
+        document.getElementById('sched-body').innerHTML = '';
+        document.getElementById('sched-head').innerHTML = '';
+        if (r && r.error === 'AUTH') showMsg('Сесія завершилась. Увійдіть за PIN у <a class="underline font-bold text-emerald-700" href="check-list-master.html">Чек-листі Майстра</a>.', 'bg-amber-50 text-amber-900');
+        else showMsg(esc((r && r.message) || 'Не вдалося отримати графік.'), 'bg-red-50 text-red-800');
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const n = kyivNow(), current = MONTHS[n.m] + ' ' + n.y;
+        fillMonths([], current);
+        document.getElementById('month').addEventListener('change', e => load(e.target.value));
+        document.getElementById('reload').addEventListener('click', () => load(document.getElementById('month').value, true));
+        load(current);
+    });
+</script>
+</body>
+</html>
