@@ -176,6 +176,10 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
   await send(); await closeDlg();
   t('звіт нарешті прийнято', (await (await fetch(BASE + '/received')).json()).length === 1);
 
+  console.log('\n── будиночок веде на головну порталу ──');
+  await page.goto(BASE + '/app'); await page.waitForTimeout(800);
+  t('кнопка-будиночок веде на index.html', (await page.locator('#homeBtn').getAttribute('onclick')).includes("index.html"));
+
   console.log('\n── портал: графік роботи (лише перегляд) ──');
   await page.goto(BASE + '/schedule.html'); await page.waitForTimeout(1200);
   t('графік показано з тим самим входом за PIN', (await page.locator('#sched-body tr').count()) === 3);
