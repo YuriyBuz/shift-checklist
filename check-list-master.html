@@ -174,6 +174,8 @@
         .absence-btn { background:#dc2626; color:#fff; font-weight:700; font-size:0.85rem;
             padding:0.35rem 0.7rem; border-radius:0.5rem; white-space:nowrap; margin-top:0.4rem; }
         .absence-btn.blink { animation: absenceBlink 1s infinite; }
+        .absence-btn.ok { background:#16a34a; }
+        .absence-btn.nodata { background:#94a3b8; }
         @keyframes absenceBlink {
             0%, 100% { opacity:1; box-shadow:0 0 0 0 rgba(220,38,38,0.6); }
             50% { opacity:0.45; box-shadow:0 0 0 6px rgba(220,38,38,0); }
@@ -482,7 +484,7 @@
            і саме воно потрапляє у звіт. Підмінити автора неможливо —
            сервер бере ім'я з підтвердженої сесії, а не з запиту.          */
 
-        const APP_VERSION    = 'master-client-2026-11-01';
+        const APP_VERSION    = 'master-client-2026-11-02';
         const CONFIG_VERSION = 'client-2026-08-25';
         const SESSION_KEY    = 'masterSessionV1';
         const DEVICE_KEY     = 'masterDeviceIdV1';
@@ -903,7 +905,7 @@
                не зареєструвався (прогул) або прийшов «Поза графіком» — біля пункту блимає
                червона кнопка з кількістю; натискання показує список. Відпустки й лікарняні
                показуємо в списку, але тривогу через них не здіймаємо. */
-            let attendance = null, attendanceSeen = false;
+            let attendance = null, attendanceSeen = false, attendanceFailed = false;
             const attendanceEsc = (v) => String(v == null ? '' : v)
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             // «Поза графіком» у ВСІХ, хто прийшов, означає, що в таблиці реєстрації немає графіка
@@ -915,10 +917,15 @@
             const paintAbsenceBtn = () => {
                 const btn = document.querySelector(`#start-${ATTENDANCE_ITEM} .absence-btn`);
                 if (!btn) return;
+                // кнопка видна завжди: червона з лічильником, зелена «усі на зміні», сіра — немає даних
                 const n = attendanceCount();
-                btn.classList.toggle('hidden', !n);
+                btn.classList.toggle('hidden', !sessionToken());
+                btn.classList.toggle('ok', !!attendance && !n);
+                btn.classList.toggle('nodata', !attendance);
                 btn.classList.toggle('blink', !!n && !attendanceSeen);
-                btn.textContent = `👥 Не на зміні: ${n}`;
+                btn.textContent = !attendance
+                    ? (attendanceFailed ? '👥 Присутність: немає даних' : '👥 Присутність: завантаження…')
+                    : (n ? `👥 Не на зміні: ${n}` : '👥 Усі на зміні');
             };
             const refreshAttendance = async () => {
                 if (!sessionToken()) return;
@@ -926,15 +933,18 @@
                     const r = await api({ action: 'attendance', token: sessionToken() });
                     if (r && r.ok) {
                         const before = attendance ? JSON.stringify([attendance.absent, attendance.offSchedule]) : '';
-                        attendance = r;
+                        attendance = r; attendanceFailed = false;
                         if (before !== JSON.stringify([r.absent, r.offSchedule])) attendanceSeen = false;   // з'явились нові — знову блимає
                         paintAbsenceBtn();
-                    }
-                } catch (e) { /* без зв'язку — лишаємо останній відомий список */ }
+                    } else { attendanceFailed = true; paintAbsenceBtn(); }
+                } catch (e) { attendanceFailed = true; paintAbsenceBtn(); /* без зв'язку — лишаємо останній відомий список */ }
             };
             const showAbsence = () => {
                 attendanceSeen = true; paintAbsenceBtn();
-                if (!attendance) return;
+                if (!attendance) {
+                    showCustomDialog({ message: '<div class="text-left"><h4 class="font-bold text-lg mb-1">👥 Присутність</h4><p>Не вдалося отримати дані з таблиці реєстрації на вході. Перевірте зв\'язок — кнопка оновиться сама.</p></div>', html: true, okText: 'Зрозуміло' });
+                    return;
+                }
                 const li = (x, extra) => `<li class="py-1 border-b border-gray-100 dark:border-slate-700"><b>${attendanceEsc(x.name)}</b>` +
                     `<span class="text-sm text-gray-500"> · ${attendanceEsc(x.position)}${extra ? ' · ' + attendanceEsc(extra) : ''}</span></li>`;
                 const block = (title, list, cls, extra) => list.length

@@ -72,7 +72,12 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
   t('натискання не ставить відповідь пункту', !(await page.locator('#start-s1-3').evaluate(e => e.classList.contains('completed'))));
   await fetch(BASE + '/attendance?n=0');
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); await page.waitForTimeout(600);
-  t('усі зареєструвались — кнопка зникає', !(await absBtn.isVisible()));
+  t('усі зареєструвались — кнопка лишається, зелена «Усі на зміні»', await absBtn.isVisible() &&
+    (await absBtn.textContent()).includes('Усі на зміні') &&
+    await absBtn.evaluate(e => e.classList.contains('ok') && !e.classList.contains('blink') && getComputedStyle(e).backgroundColor === 'rgb(22, 163, 74)'));
+  await absBtn.click(); await page.waitForTimeout(400);
+  t('  натискання показує «Усі, хто мав вийти, на зміні» і відпустки', /Усі, хто мав вийти, на зміні/.test(await dlgText()));
+  await closeDlg();
   await fetch(BASE + '/attendance');
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); await page.waitForTimeout(600);
   t('знову хтось відсутній — кнопка блимає знову', await absBtn.evaluate(e => e.classList.contains('blink')));
@@ -88,6 +93,14 @@ const t = (n, c) => { console.log((c ? '  ✅ ' : '  ❌ ') + n); if (!c) fails+
   t('  у списку — попередження про графік, а не 18 імен', /Графік на сьогодні не завантажено/.test(nsTxt) &&
     !/Працівник 5/.test(nsTxt) && /Козило/.test(nsTxt));
   await closeDlg();
+  await fetch(BASE + '/attendance?fail');
+  const p2 = await ctx.newPage(); await p2.goto(BASE + '/app'); await p2.waitForTimeout(900);
+  const abs2 = p2.locator('#start-s1-3 .absence-btn');
+  t('таблиця не відповіла — кнопка сіра «немає даних», а не зникає', await abs2.isVisible() &&
+    (await abs2.textContent()).includes('немає даних') && await abs2.evaluate(e => e.classList.contains('nodata')));
+  await abs2.click(); await p2.waitForTimeout(400);
+  t('  натискання пояснює, що даних немає', /Не вдалося отримати дані/.test(await p2.locator('#customDialogMessage').textContent()));
+  await p2.close();
   await fetch(BASE + '/attendance');
 
   console.log('\n── час натискання і перемикання вкладок ──');
